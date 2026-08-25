@@ -27,7 +27,7 @@ PWA:       https://yhcfu.github.io/showroom-pip-pwa/app/
 Player:    https://yhcfu.github.io/showroom-pip-pwa/player/
 ```
 
-Player URLを使って[iPhoneショートカット](ios-shortcut.md)を作ります。Android/PCのブックマークレットは、PWAの「ブックマークレットをコピー」ボタンが公開URLを埋め込むため、手編集は不要です。
+Player URLを使って[iPhoneショートカット](ios-shortcut.md)を作ります。PCはPWAの「SHOWROOM PiP」ボタンをブックマークバーへドラッグします。AndroidはPWAからブックマークレットをコピーし、既存ブックマークのURL欄へ貼り付けます。どちらも公開中のPlayer URLは自動で埋め込まれます。
 
 ## デプロイしないもの
 

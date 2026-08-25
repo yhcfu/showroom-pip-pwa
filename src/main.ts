@@ -14,15 +14,16 @@ const roomForm = document.querySelector<HTMLFormElement>("#room-form")!;
 const hlsForm = document.querySelector<HTMLFormElement>("#hls-form")!;
 const roomInput = document.querySelector<HTMLInputElement>("#room")!;
 const hlsInput = document.querySelector<HTMLInputElement>("#hls-url")!;
-const shortcutButton = document.querySelector<HTMLAnchorElement>("#shortcut-button")!;
 const copyBookmarkletButton = document.querySelector<HTMLButtonElement>("#copy-bookmarklet")!;
+const copyBookmarkletDesktopButton = document.querySelector<HTMLButtonElement>("#copy-bookmarklet-desktop")!;
+const bookmarkletLink = document.querySelector<HTMLAnchorElement>("#bookmarklet-link")!;
+const openRoomButton = document.querySelector<HTMLButtonElement>("#open-room-button")!;
+const nextStep = document.querySelector<HTMLElement>("#next-step")!;
 const historyContainer = document.querySelector<HTMLElement>("#room-history")!;
 const historyHint = document.querySelector<HTMLElement>("#history-hint")!;
 const iosTools = document.querySelector<HTMLElement>("#ios-tools")!;
 const androidTools = document.querySelector<HTMLElement>("#android-tools")!;
-const handoffCard = document.querySelector<HTMLElement>("#handoff-card")!;
-const handoffSummary = document.querySelector<HTMLElement>("#handoff-summary")!;
-const handoffAction = document.querySelector<HTMLAnchorElement>("#handoff-action")!;
+const desktopTools = document.querySelector<HTMLElement>("#desktop-tools")!;
 const platformNote = document.querySelector<HTMLElement>("#platform-note")!;
 const installGuide = document.querySelector<HTMLElement>("#install-guide")!;
 const installTitle = document.querySelector<HTMLElement>("#install-title")!;
@@ -41,6 +42,7 @@ let installPrompt: InstallPromptEvent | undefined;
 
 function setStatus(message: string, isError = false) {
   status.textContent = message;
+  status.hidden = false;
   status.classList.toggle("error", isError);
 }
 
@@ -66,28 +68,26 @@ function rememberRoom(roomKey: string, room?: Partial<RoomHistoryEntry>) {
 
 function selectRoom(roomKey: string) {
   roomInput.value = roomKey;
-  shortcutButton.href = buildShortcutUrl(roomKey);
-}
-
-function showRoomHandoff(roomKey: string) {
-  handoffCard.hidden = false;
-  if (platform === "ios") {
-    handoffSummary.textContent = `${roomKey}を端末内ショートカットで解決し、通常のSafariへ渡します。`;
-    handoffAction.textContent = "ショートカットを開く";
-    handoffAction.href = buildShortcutUrl(roomKey);
-  } else {
-    handoffSummary.textContent = `${roomKey}をSHOWROOMで開き、保存したブックマークレットを実行してください。`;
-    handoffAction.textContent = "SHOWROOMで開く";
-    handoffAction.href = buildShowroomRoomUrl(roomKey);
-  }
-  handoffCard.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function openRoom(roomKey: string) {
   selectRoom(roomKey);
   rememberRoom(roomKey);
-  showRoomHandoff(roomKey);
-  location.href = platform === "ios" ? buildShortcutUrl(roomKey) : buildShowroomRoomUrl(roomKey);
+  if (platform === "ios") {
+    location.href = buildShortcutUrl(roomKey);
+    return;
+  }
+
+  const roomUrl = buildShowroomRoomUrl(roomKey);
+  if (platform === "desktop") {
+    const roomWindow = window.open(roomUrl, "_blank");
+    if (roomWindow) {
+      roomWindow.opener = null;
+      setStatus("SHOWROOMを別タブで開きました。ブックマークバーの「SHOWROOM PiP」を押してください。");
+      return;
+    }
+  }
+  location.href = roomUrl;
 }
 
 function renderHistory() {
@@ -118,7 +118,7 @@ function renderHistory() {
     const open = document.createElement("button");
     open.type = "button";
     open.className = "room-open";
-    open.textContent = platform === "ios" ? "Shortcut" : "SHOWROOM";
+    open.textContent = "開く";
     open.addEventListener("click", () => openRoom(room.roomKey));
 
     const remove = document.createElement("button");
@@ -169,14 +169,6 @@ function setupInstallGuide() {
   });
 }
 
-roomInput.addEventListener("input", () => {
-  try {
-    selectRoom(parseRoomKey(roomInput.value));
-  } catch {
-    shortcutButton.href = buildShortcutUrl(roomInput.value);
-  }
-});
-
 roomForm.addEventListener("submit", (event) => {
   event.preventDefault();
   try {
@@ -186,24 +178,27 @@ roomForm.addEventListener("submit", (event) => {
   }
 });
 
-shortcutButton.addEventListener("click", (event) => {
-  try {
-    const roomKey = parseRoomKey(roomInput.value);
-    selectRoom(roomKey);
-    rememberRoom(roomKey);
-  } catch (error) {
-    event.preventDefault();
-    setStatus(error instanceof Error ? error.message : "ルームを読み取れませんでした。", true);
-  }
+copyBookmarkletButton.addEventListener("click", async () => {
+  await copyBookmarklet();
 });
 
-copyBookmarkletButton.addEventListener("click", async () => {
+copyBookmarkletDesktopButton.addEventListener("click", async () => {
+  await copyBookmarklet();
+});
+
+async function copyBookmarklet() {
   try {
     await navigator.clipboard.writeText(buildBookmarklet(playerBase.toString()));
     setStatus("ブックマークレットをコピーしました。ブックマークのURL欄へ貼り付けてください。");
   } catch {
     setStatus("コピーできませんでした。HTTPSで開いてから、もう一度試してください。", true);
   }
+}
+
+bookmarkletLink.href = buildBookmarklet(playerBase.toString());
+bookmarkletLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  setStatus("クリックではなく、このボタンをブックマークバーへドラッグしてください。");
 });
 
 hlsForm.addEventListener("submit", (event) => {
@@ -217,14 +212,18 @@ hlsForm.addEventListener("submit", (event) => {
 
 if (platform === "ios") {
   iosTools.hidden = false;
+  openRoomButton.textContent = "Shortcutで開く";
+  nextStep.textContent = "Shortcutが配信URLを取得し、SafariのPlayerを開きます。";
   historyHint.textContent = "iPhoneのホーム画面版ではroom_url_keyで重複を除きます。履歴は端末外へ送信しません。";
-  platformNote.innerHTML = isStandalone
-    ? "<strong>iPhoneでは動画をこのPWA内で再生しません。</strong> ショートカットがHLSを取得し、PWAの範囲外にあるSafariプレイヤーを開きます。"
-    : "<strong>iPhoneではショートカットを使います。</strong> SHOWROOM APIの取得後、このSafariでPiPプレイヤーを開きます。";
-} else {
+  platformNote.textContent = "URLを貼ると、Shortcut経由でSafariのPiP Playerを開きます。";
+} else if (platform === "android") {
   androidTools.hidden = false;
   historyHint.textContent = "PlayerがroomIdを取得した後は、同じルームを1件に統合します。履歴は端末外へ送信しません。";
-  platformNote.innerHTML = "<strong>Androidではブックマークレットを使います。</strong> SHOWROOMのルームページ上でHLSを取得し、ChromeのPiPプレイヤーへ移動します。";
+  platformNote.textContent = "URLを貼る → SHOWROOMで保存したブックマークを押す → PiP。";
+} else {
+  desktopTools.hidden = false;
+  historyHint.textContent = "PlayerがroomIdを取得した後は、同じルームを1件に統合します。履歴はPC内だけに保存されます。";
+  platformNote.textContent = "初回にボタンをドラッグ。以後はURLを貼って、SHOWROOMでそのボタンを押すだけ。";
 }
 
 setupInstallGuide();
@@ -253,7 +252,7 @@ try {
       const roomKey = parseRoomKey(requestedRoom);
       selectRoom(roomKey);
       rememberRoom(roomKey);
-      showRoomHandoff(roomKey);
+      setStatus(`${roomKey}を入力しました。「${openRoomButton.textContent}」を押してください。`);
     }
   }
 } catch (error) {

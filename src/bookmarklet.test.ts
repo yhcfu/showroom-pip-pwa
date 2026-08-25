@@ -10,10 +10,15 @@ describe("buildBookmarklet", () => {
     expect(result).toContain("/api/room/status");
     expect(result).toContain("/api/live/streaming_url");
     expect(result).toContain("showroom-live");
-    expect(result).toContain("else location.href=u");
+    expect(result).toContain("location.href=P+'#'+f");
+    expect(result).not.toContain("about:blank");
   });
 
   it("rejects a non-local HTTP player", () => {
     expect(() => buildBookmarklet("http://example.com/player/")).toThrow("HTTPS");
+  });
+
+  it("allows the loopback development server", () => {
+    expect(buildBookmarklet("http://127.0.0.1:5173/player/")).toMatch(/^javascript:/);
   });
 });

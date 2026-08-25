@@ -13,41 +13,57 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">PERSONAL VIEWER / GITHUB PAGES ONLY</p>
+        <p class="eyebrow">PERSONAL PiP LAUNCHER</p>
         <h1>SHOWROOM <span>PiP</span></h1>
-        <p class="lead">一度登録したルームを、iPhoneはショートカット、Androidはブックマークレット経由でPiPプレイヤーへ渡します。</p>
+        <p id="platform-note" class="lead"></p>
       </header>
 
-      <section id="platform-note" class="notice"></section>
-
-      <section id="handoff-card" class="handoff-card" hidden>
-        <strong>SafariでPiP再生</strong>
-        <p id="handoff-summary"></p>
-        <a id="handoff-action" class="primary action-link" href="#">ショートカットを開く</a>
-      </section>
-
-      <section id="install-guide" class="install-guide" hidden>
-        <div>
-          <strong id="install-title">ホーム画面に追加</strong>
-          <p id="install-summary">履歴からすぐ開けるよう、この端末へ追加できます。</p>
-        </div>
-        <button id="install-button" class="secondary" type="button">追加手順を見る</button>
-        <ol id="install-steps" hidden>
-          <li>Safari下部の共有ボタン（四角から上向き矢印）を押す</li>
-          <li>メニューを下へ送り、「ホーム画面に追加」を選ぶ</li>
-          <li>右上の「追加」を押す</li>
-          <li>ホーム画面にできたアイコンから起動する</li>
-        </ol>
-      </section>
-
       <section class="control-card">
-        <form id="room-form">
-          <label for="room">SHOWROOMのルームURLまたは room_url_key</label>
-          <div class="field-row">
-            <input id="room" name="room" inputmode="url" autocomplete="url" placeholder="https://www.showroom-live.com/r/..." required />
-            <button class="primary" type="submit">このルームを開く</button>
+        <section id="desktop-tools" class="flow-section" hidden aria-labelledby="desktop-setup-heading">
+          <span class="step-number" aria-hidden="true">1</span>
+          <div class="flow-content">
+            <h2 id="desktop-setup-heading">初回だけ：ブックマークバーへ追加</h2>
+            <p>下のボタンをブックマークバーへドラッグしてください。</p>
+            <div class="bookmarklet-actions">
+              <a id="bookmarklet-link" class="bookmarklet-link" href="#" draggable="true">SHOWROOM PiP</a>
+              <button id="copy-bookmarklet-desktop" class="quiet-button" type="button">ドラッグできない場合はコピー</button>
+            </div>
+            <p class="fallback-hint">コピーした場合は、任意のブックマークを編集してURL欄へ貼り付けます。</p>
           </div>
-        </form>
+        </section>
+
+        <section id="android-tools" class="flow-section" hidden aria-labelledby="android-setup-heading">
+          <span class="step-number" aria-hidden="true">1</span>
+          <div class="flow-content">
+            <h2 id="android-setup-heading">初回だけ：ブックマークを作る</h2>
+            <button id="copy-bookmarklet" class="secondary full-width" type="button">ブックマークレットをコピー</button>
+            <p>任意のブックマークを編集し、URL欄をコピーしたコードへ置き換えます。</p>
+          </div>
+        </section>
+
+        <section id="ios-tools" class="flow-section" hidden aria-labelledby="ios-setup-heading">
+          <span class="step-number" aria-hidden="true">1</span>
+          <div class="flow-content">
+            <h2 id="ios-setup-heading">初回だけ：Shortcutを用意</h2>
+            <p>「SHOWROOM PiP」という名前で付属手順どおりに作成します。</p>
+            <a class="help-link" href="https://github.com/yhcfu/showroom-pip-pwa/blob/main/docs/ios-shortcut.md">作成手順を見る</a>
+          </div>
+        </section>
+
+        <section class="flow-section room-section" aria-labelledby="room-heading">
+          <span class="step-number" aria-hidden="true">2</span>
+          <div class="flow-content">
+            <h2 id="room-heading">配信を見る</h2>
+            <form id="room-form">
+              <label class="sr-only" for="room">SHOWROOMのルームURLまたはroom key</label>
+              <div class="field-row">
+                <input id="room" name="room" inputmode="url" autocomplete="url" placeholder="SHOWROOMのルームURLを貼り付け" required />
+                <button id="open-room-button" class="primary" type="submit">SHOWROOMを開く</button>
+              </div>
+            </form>
+            <p id="next-step" class="next-step">開いたルームページで、ブックマークバーの「SHOWROOM PiP」を押します。</p>
+          </div>
+        </section>
 
         <section class="history-section" aria-labelledby="history-heading">
           <div class="section-heading">
@@ -61,24 +77,8 @@
           </div>
         </section>
 
-        <section id="ios-tools" class="platform-tools" hidden>
-          <h2>iPhoneの準備</h2>
-          <a id="shortcut-button" class="shortcut-button" href="shortcuts://run-shortcut?name=SHOWROOM%20PiP&amp;input=text&amp;text=">iPhoneショートカットで開く</a>
-          <p class="hint">初回だけ付属ドキュメントどおり「SHOWROOM PiP」ショートカットを作成します。</p>
-        </section>
-
-        <section id="android-tools" class="platform-tools" hidden>
-          <h2>Android / PCの準備</h2>
-          <button id="copy-bookmarklet" class="secondary full-width" type="button">ブックマークレットをコピー</button>
-          <ol class="compact-steps">
-            <li>任意ページをブックマークし、URLをコピーしたコードへ置き換える</li>
-            <li>上の入力または履歴からSHOWROOMページを開く</li>
-            <li>保存したブックマークレットを実行する</li>
-          </ol>
-        </section>
-
         <details>
-          <summary>取得済みHLS URLを直接開く</summary>
+          <summary>詳細設定</summary>
           <div class="details-body">
             <form id="hls-form">
               <label for="hls-url">HLS master URL</label>
@@ -91,7 +91,20 @@
         </details>
       </section>
 
-      <p id="status" class="status" role="status" aria-live="polite">待機中</p>
+      <section id="install-guide" class="install-guide" hidden>
+        <div>
+          <strong id="install-title">ホーム画面に追加</strong>
+          <p id="install-summary">履歴へすぐ戻れるようにします。</p>
+        </div>
+        <button id="install-button" class="quiet-button" type="button">手順を見る</button>
+        <ol id="install-steps" hidden>
+          <li>Safariの共有ボタンを押す</li>
+          <li>「ホーム画面に追加」を選ぶ</li>
+          <li>右上の「追加」を押す</li>
+        </ol>
+      </section>
+
+      <p id="status" class="status" role="status" aria-live="polite" hidden></p>
       <footer>非公式・個人利用向け。公開中の無料配信だけを対象とし、動画は中継・保存しません。</footer>
     </main>
     <script type="module" src="/src/main.ts"></script>
