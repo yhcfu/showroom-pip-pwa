@@ -1,13 +1,6 @@
-# Android・PCのブックマークレット
+# Androidのブックマークレット
 
-AndroidとPCでは、SHOWROOMのルームページと同じoriginでJavaScriptを実行します。これにより、外部PWAからはCORSで読めないAPIを、SHOWROOMページ自身から取得できます。
-
-## PCで初回だけ行うこと
-
-1. Chromeのブックマークバーを表示する。非表示なら`Ctrl+Shift+B`（macOSは`Command+Shift+B`）を押す。
-2. PWAに表示された「SHOWROOM PiP」ボタンを、ブックマークバーへドラッグする。
-
-ドラッグできないブラウザでは「ドラッグできない場合はコピー」を押し、任意のブックマークのURL欄をコピーした`javascript:...`へ置き換えます。
+Androidでは、SHOWROOMのルームページと同じoriginでJavaScriptを実行します。これにより、外部PWAからはCORSで読めないAPIを、SHOWROOMページ自身から取得できます。PCはこの方式を使わず、公式プレイヤーを直接開きます。
 
 ## Androidで初回だけ行うこと
 
@@ -20,9 +13,9 @@ Chrome for Androidでは、ブックマーク一覧から押す代わりに、SH
 
 ## 使い方
 
-1. PWAへルームURLを入力するか、履歴の「開く」を押す。
+1. PWAへルームURLを入力するか、履歴の「PiP」を押す。
 2. 開いた`https://www.showroom-live.com/r/...`でブックマークレットを実行する。
-3. 配信中なら、そのSHOWROOMタブがPlayerへ切り替わる。PCではPWAのタブは残る。
+3. 配信中なら、そのSHOWROOMタブがPlayerへ切り替わる。
 4. 動画を再生してPiPボタンを押す。
 
 ブックマークレットはroom key、roomId、room名もPlayerへ渡します。PlayerとPWAは同じGitHub Pages originなので、次にPWAを開いたとき履歴がroomIdで重複排除されます。

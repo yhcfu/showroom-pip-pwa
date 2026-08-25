@@ -1,13 +1,13 @@
 # SHOWROOM PiP PWA
 
-SHOWROOMの公開ライブを、スマートフォンのPicture-in-Picture（PiP）で見るための個人用PWAです。現在の構成はGitHub Pagesだけで動き、Cloudflare Workerなどの常設サーバーを使いません。
+SHOWROOMの公開ライブを履歴からすぐ開くための個人用PWAです。iPhoneとAndroidではPicture-in-Picture（PiP）、PCでは公式プレイヤーの通常表示とシアター表示を使います。現在の構成はGitHub Pagesだけで動き、Cloudflare Workerなどの常設サーバーを使いません。
 
 公開版: [SHOWROOM PiPを開く](https://yhcfu.github.io/showroom-pip-pwa/app/)
 
 ## 端末ごとの動き
 
 - iPhone/iPad: 初回だけサイトから署名済みApple Shortcutを追加する。PWAから起動後、端末上でSHOWROOM APIを取得し、Safariのプレイヤーへ渡す。
-- PC: 初回だけPWAのボタンをブックマークバーへドラッグする。以後はルームURLを貼り、開いたSHOWROOMでそのボタンを押す。
+- PC: 初回設定は不要。履歴や入力欄からSHOWROOM公式プレイヤーを通常タブ、またはシアターサイズの専用ウィンドウで開く。
 - Android: SHOWROOMのルームページを開き、保存済みブックマークレットでHLS URLを取得する。結果はChromeなどのプレイヤーへ渡す。
 - 取得済みHLS URL: PWAへ直接入力してプレイヤーを開ける。
 
@@ -15,7 +15,7 @@ PWAは`/app/`、動画プレイヤーは`/player/`へ分けています。イン
 
 ## 履歴
 
-一度開いたルームは`localStorage`へ最大20件保存します。Android/通常ブラウザではPlayerが`room_id`を返した後、URL keyが変わっても同じroomIdなら1件に統合します。iPhoneのホーム画面Web AppとSafariはストレージが分かれるため、PWA側はroom keyで重複を除きます。履歴はサーバーへ送信しません。
+一度開いたルームは`localStorage`へ最大20件保存します。AndroidではPlayerが`room_id`を返した後、URL keyが変わっても同じroomIdなら1件に統合します。PCとiPhoneのPWA側はroom keyで重複を除きます。履歴はサーバーへ送信しません。
 
 ## サーバーなしでできないこと
 
@@ -44,7 +44,7 @@ npm run check
 
 - [構成とデータフロー](docs/architecture.md)
 - [iPhoneショートカット](docs/ios-shortcut.md)
-- [Android/PCブックマークレット](docs/bookmarklet.md)
+- [Androidブックマークレット](docs/bookmarklet.md)
 - [GitHub Pagesへのデプロイ](docs/deployment.md)
 - [履歴と通知の境界](docs/history-and-notifications.md)
 - [既存実装・WASM・CORSの調査](docs/research.md)

@@ -20,7 +20,8 @@ SHOWROOMのルームページはiframe埋め込みを拒否します。また、
 その差を端末側だけで吸収するため、次の2経路に限定しました。
 
 - iPhone: AppleショートカットのHTTPアクションで取得する。
-- Android/PC: SHOWROOMページ上のブックマークレットでsame-origin取得する。
+- Android: SHOWROOMページ上のブックマークレットでsame-origin取得する。
+- PC: HLS取得を行わず、SHOWROOM公式プレイヤーを開くランチャーに限定する。
 
 ## WASMでは解決しない
 

@@ -27,7 +27,7 @@ PWA:       https://yhcfu.github.io/showroom-pip-pwa/app/
 Player:    https://yhcfu.github.io/showroom-pip-pwa/player/
 ```
 
-公開版には署名済みの[iPhone Shortcut](ios-shortcut.md)を含めます。PCはPWAの「SHOWROOM PiP」ボタンをブックマークバーへドラッグします。AndroidはPWAからブックマークレットをコピーし、既存ブックマークのURL欄へ貼り付けます。各経路には公開中のPlayer URLが埋め込まれています。
+公開版には署名済みの[iPhone Shortcut](ios-shortcut.md)を含めます。AndroidはPWAからブックマークレットをコピーし、既存ブックマークのURL欄へ貼り付けます。PCは追加設定をせず、SHOWROOM公式プレイヤーを通常タブまたはシアターウィンドウで開きます。iPhoneとAndroidの経路には公開中のPlayer URLが埋め込まれています。
 
 ## デプロイしないもの
 

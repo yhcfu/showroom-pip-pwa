@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#11131a" />
-    <meta name="description" content="SHOWROOMの公開HLSをPiP再生する個人用PWA" />
+    <meta name="description" content="SHOWROOMを履歴からすぐ開き、スマートフォンではPiP再生できる個人用PWA" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="../icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="../icon-180.png" />
@@ -13,25 +13,12 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">PERSONAL PiP LAUNCHER</p>
+        <p class="eyebrow">PERSONAL VIEWER LAUNCHER</p>
         <h1>SHOWROOM <span>PiP</span></h1>
         <p id="platform-note" class="lead"></p>
       </header>
 
       <section class="control-card">
-        <section id="desktop-tools" class="flow-section" hidden aria-labelledby="desktop-setup-heading">
-          <span class="step-number" aria-hidden="true">1</span>
-          <div class="flow-content">
-            <h2 id="desktop-setup-heading">初回だけ：ブックマークバーへ追加</h2>
-            <p>下のボタンをブックマークバーへドラッグしてください。</p>
-            <div class="bookmarklet-actions">
-              <a id="bookmarklet-link" class="bookmarklet-link" href="#" draggable="true">SHOWROOM PiP</a>
-              <button id="copy-bookmarklet-desktop" class="quiet-button" type="button">ドラッグできない場合はコピー</button>
-            </div>
-            <p class="fallback-hint">コピーした場合は、任意のブックマークを編集してURL欄へ貼り付けます。</p>
-          </div>
-        </section>
-
         <section id="android-tools" class="flow-section" hidden aria-labelledby="android-setup-heading">
           <span class="step-number" aria-hidden="true">1</span>
           <div class="flow-content">
@@ -52,17 +39,20 @@
         </section>
 
         <section class="flow-section room-section" aria-labelledby="room-heading">
-          <span class="step-number" aria-hidden="true">2</span>
+          <span id="room-step-number" class="step-number" aria-hidden="true">2</span>
           <div class="flow-content">
             <h2 id="room-heading">配信を見る</h2>
             <form id="room-form">
               <label class="sr-only" for="room">SHOWROOMのルームURLまたはroom key</label>
               <div class="field-row">
                 <input id="room" name="room" inputmode="url" autocomplete="url" placeholder="SHOWROOMのルームURLを貼り付け" required />
-                <button id="open-room-button" class="primary" type="submit">SHOWROOMを開く</button>
+                <div class="room-actions">
+                  <button id="open-room-button" class="primary" type="submit">見る</button>
+                  <button id="theater-room-button" class="secondary" type="submit" hidden>シアター</button>
+                </div>
               </div>
             </form>
-            <p id="next-step" class="next-step">開いたルームページで、ブックマークバーの「SHOWROOM PiP」を押します。</p>
+            <p id="next-step" class="next-step">SHOWROOM公式プレイヤーで開きます。</p>
           </div>
         </section>
 

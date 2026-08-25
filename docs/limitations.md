@@ -7,6 +7,8 @@
 - iOSのstandalone PWAではPiPが失敗する既知問題があるため、scope外のSafari playerを使う。
 - iPhoneのホーム画面Web AppとSafariはstorageが分かれるため、iOSのPWA履歴はroomIdではなくroom keyで重複排除する。
 - Androidではブックマークレットを一度登録し、SHOWROOMページ上で実行する必要がある。
+- PCはSHOWROOM公式プレイヤーを開くランチャーとして動作し、自作PlayerやPiPは提供しない。
+- PCのシアター表示はブラウザのpopup制御に依存し、設定によっては通常のタブで開く。
 - サーバーを使わない現在の構成では、配信開始の自動検知と通知はできない。
 - 配信終了、room key誤り、限定・有料配信、地域制限には対応しない。
 - 非公開APIのfield名やendpointが変われば修正が必要になる。

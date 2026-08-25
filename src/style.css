@@ -32,8 +32,8 @@ label { display: block; margin: 0 0 8px; color: #d7d5dd; font-size: 13px; font-w
 .field-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
 input { width: 100%; min-width: 0; border: 1px solid #343541; border-radius: 12px; outline: none; background: #101118; color: #f6f3fa; padding: 13px 14px; }
 input:focus { border-color: #9e75d8; box-shadow: 0 0 0 3px rgba(158,117,216,.14); }
-button, .bookmarklet-link, .action-link { border: 0; border-radius: 12px; cursor: pointer; font-weight: 750; text-decoration: none; text-align: center; padding: 12px 15px; }
-button:focus-visible, .bookmarklet-link:focus-visible, .action-link:focus-visible, summary:focus-visible, .help-link:focus-visible { outline: 3px solid rgba(200,162,255,.55); outline-offset: 3px; }
+button, .action-link { border: 0; border-radius: 12px; cursor: pointer; font-weight: 750; text-decoration: none; text-align: center; padding: 12px 15px; }
+button:focus-visible, .action-link:focus-visible, summary:focus-visible, .help-link:focus-visible { outline: 3px solid rgba(200,162,255,.55); outline-offset: 3px; }
 .primary { background: #c8a2ff; color: #15101c; }
 .secondary { background: #292a35; color: #eeeaf4; }
 button:disabled { cursor: not-allowed; opacity: .38; }
@@ -47,9 +47,8 @@ button:disabled { cursor: not-allowed; opacity: .38; }
 .flow-content h2 { margin: 2px 0 6px; color: #eeeaf4; font-size: 15px; }
 .flow-content > p { margin: 0 0 12px; color: #9996a2; font-size: 12px; line-height: 1.6; }
 .step-number { display: grid; place-items: center; align-self: start; width: 25px; height: 25px; border-radius: 50%; background: #30263d; color: #d9c0ff; font-size: 12px; font-weight: 800; }
-.bookmarklet-actions { display: flex; align-items: center; gap: 10px; }
-.bookmarklet-link { min-width: 170px; border: 1px dashed #c8a2ff; background: #241d2e; color: #e1cdff; cursor: grab; user-select: none; }
-.bookmarklet-link:active { cursor: grabbing; }
+.room-actions, .room-row-actions { display: flex; gap: 8px; }
+.room-actions button { white-space: nowrap; }
 .quiet-button { border: 1px solid #3a3b46; background: transparent; color: #bbb8c2; font-size: 11px; font-weight: 650; }
 .fallback-hint { margin: 9px 0 0 !important; color: #747580 !important; font-size: 10px !important; }
 .help-link { color: #d5b8ff; font-size: 12px; }
@@ -65,7 +64,8 @@ button:disabled { cursor: not-allowed; opacity: .38; }
 .room-name, .room-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room-name { color: #e7e3eb; font-size: 12px; font-weight: 650; }
 .room-key { margin-top: 2px; color: #737480; font-size: 9px; }
-.room-open, .room-remove { border-radius: 8px; background: #292a35; color: #eeeaf4; padding: 7px 9px; font-size: 10px; }
+.room-open, .room-theater, .room-remove { border-radius: 8px; background: #292a35; color: #eeeaf4; padding: 7px 9px; font-size: 10px; }
+.room-theater { border: 1px solid #3d3e49; background: transparent; color: #c8c5ce; }
 .room-remove { background: transparent; color: #777884; padding-inline: 6px; }
 details { border-top: 1px solid #2e2f39; padding: 14px 0 18px; }
 summary { cursor: pointer; color: #858590; font-size: 11px; }
@@ -90,8 +90,7 @@ footer { padding: 18px 4px 0; color: #666773; font-size: 10px; line-height: 1.7;
   .shell { padding-left: 12px; padding-right: 12px; }
   .control-card { padding: 0 15px; }
   .section-heading { display: grid; }
-  .bookmarklet-actions { align-items: stretch; flex-direction: column; }
-  .bookmarklet-link { min-width: 0; }
+  .room-actions button { flex: 1; }
   .install-guide { grid-template-columns: 1fr; }
   .install-guide button { width: 100%; }
 }
