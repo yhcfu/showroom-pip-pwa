@@ -17,7 +17,7 @@
 
 - Goals: get a known SHOWROOM room into PiP with the fewest repeat actions; make the one-time setup unmistakable; preserve compact local history
 - Non-goals: comments, gifts, recording, paid streams, background notifications, account integration
-- Success signals: a first-time PC user can install the bookmarklet without editing its URL; a returning user can start from history; the primary screen fits without explanatory cards competing for attention
+- Success signals: a first-time PC user can install the bookmarklet without editing its URL; an iPhone user can import a ready-made Shortcut without assembling actions; a returning user can start from history; the primary screen fits without explanatory cards competing for attention
 
 ## Personas and jobs
 
@@ -34,7 +34,7 @@
 ## Design principles
 
 - Show only the next action: platform-specific setup and labels replace generic architecture explanations
-- Pay setup cost once: PC uses drag-to-bookmark-bar; copy/edit is a fallback, not the primary route
+- Pay setup cost once: PC uses drag-to-bookmark-bar; iPhone imports a signed Shortcut file; manual construction and copy/edit are fallbacks
 - Keep the launcher available: on desktop, open SHOWROOM in a second tab and reuse that tab for Player
 - Tradeoffs: the static version still requires a bookmarklet on PC/Android and a Shortcut on iOS because the PWA cannot read SHOWROOM APIs cross-origin
 
@@ -50,7 +50,7 @@
 ## Components
 
 - Existing components to reuse: room form, history rows, install guide, player controls
-- New/changed components: draggable desktop bookmarklet, compact numbered setup row, copy fallback
+- New/changed components: draggable desktop bookmarklet, signed iPhone Shortcut installer, compact numbered setup row, copy fallback
 - Variants and states: iOS Shortcut, Android copy setup, desktop drag setup; setup complete is user-managed because bookmark installation cannot be detected
 - Token/component ownership: `src/style.css` owns the small local visual system
 
@@ -88,10 +88,10 @@
 - Framework/styling system: Vite, TypeScript, plain HTML/CSS
 - Design-token constraints: extend current local colors and radii; do not add a component library
 - Performance constraints: no new runtime dependency; bookmarklet remains generated locally
-- Compatibility constraints: GitHub Pages only; API resolution stays inside Apple Shortcuts or the SHOWROOM-origin bookmarklet
+- Compatibility constraints: GitHub Pages only; API resolution stays inside the signed Apple Shortcut or the SHOWROOM-origin bookmarklet
 - Test/screenshot expectations: unit-test generated bookmarklet behavior; verify desktop and mobile DOM plus public Pages build
 
 ## Open questions
 
-- [ ] Replace the manually created iOS Shortcut with a distributable Shortcut link when a trusted publishing route is available / owner / iPhone first-run cost
+- [ ] If direct signed-file import proves unreliable on current iOS, publish the same reviewed Shortcut through an iCloud share link / owner / iPhone first-run cost
 - [ ] Confirm bookmarklet installation and PiP on a physical Android device / owner / mobile acceptance

@@ -1,0 +1,61 @@
+#define name SHOWROOM PiP
+#define color purple
+#define glyph play
+#define inputs text
+#define noinput stopwith "SHOWROOM PiPからルームを選んでください。"
+#define version 18
+
+#include 'actions/web'
+
+@roomKey = "{ShortcutInput}"
+const statusResponse = downloadURL("https://www.showroom-live.com/api/room/status?room_url_key={@roomKey}")
+const status = getDictionary(statusResponse)
+const isLiveValue = getValue(status, "is_live")
+const isLive = number(isLiveValue)
+
+if isLive != true {
+    alert("現在は配信中ではありません。", "SHOWROOM PiP")
+    stop()
+}
+
+const roomIdValue = getValue(status, "room_id")
+const roomId = number(roomIdValue)
+const roomNameValue = getValue(status, "room_name")
+@roomName = "{roomNameValue}"
+const streamResponse = downloadURL("https://www.showroom-live.com/api/live/streaming_url?abr_available=1&room_id={roomId}")
+const streamData = getDictionary(streamResponse)
+const streams = getValue(streamData, "streaming_url_list")
+@streamUrl: text
+
+for stream in streams {
+    const streamInfo = getDictionary(@stream)
+    const streamTypeValue = getValue(streamInfo, "type")
+    @streamType = "{streamTypeValue}"
+    if @streamType == "hls_all" {
+        const streamUrlValue = getValue(streamInfo, "url")
+        @streamUrl = "{streamUrlValue}"
+    }
+}
+
+if !@streamUrl {
+    for fallbackStream in streams {
+        const fallbackStreamInfo = getDictionary(@fallbackStream)
+        const fallbackStreamTypeValue = getValue(fallbackStreamInfo, "type")
+        @fallbackStreamType = "{fallbackStreamTypeValue}"
+        if @fallbackStreamType == "hls" {
+            const fallbackStreamUrlValue = getValue(fallbackStreamInfo, "url")
+            @streamUrl = "{fallbackStreamUrlValue}"
+        }
+    }
+}
+
+if !@streamUrl {
+    alert("公開HLSが見つかりません。", "SHOWROOM PiP")
+    stop()
+}
+
+const encodedRoomKey = urlEncode(@roomKey)
+const encodedRoomId = urlEncode("{roomId}")
+const encodedRoomName = urlEncode(@roomName)
+const encodedStreamUrl = urlEncode(@streamUrl)
+openURL("https://yhcfu.github.io/showroom-pip-pwa/player/#v=1&status=ok&room={encodedRoomKey}&room_id={encodedRoomId}&room_name={encodedRoomName}&stream={encodedStreamUrl}")

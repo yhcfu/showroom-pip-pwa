@@ -6,7 +6,7 @@ SHOWROOMの公開ライブを、スマートフォンのPicture-in-Picture（PiP
 
 ## 端末ごとの動き
 
-- iPhone/iPad: PWAからAppleショートカットを起動し、端末上でSHOWROOM APIを取得する。結果は通常Safariのプレイヤーへ渡す。
+- iPhone/iPad: 初回だけサイトから署名済みApple Shortcutを追加する。PWAから起動後、端末上でSHOWROOM APIを取得し、Safariのプレイヤーへ渡す。
 - PC: 初回だけPWAのボタンをブックマークバーへドラッグする。以後はルームURLを貼り、開いたSHOWROOMでそのボタンを押す。
 - Android: SHOWROOMのルームページを開き、保存済みブックマークレットでHLS URLを取得する。結果はChromeなどのプレイヤーへ渡す。
 - 取得済みHLS URL: PWAへ直接入力してプレイヤーを開ける。
