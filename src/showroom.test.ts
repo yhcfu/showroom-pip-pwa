@@ -33,6 +33,6 @@ describe("handoff URLs", () => {
 
   it("creates an Apple Shortcuts URL", () => {
     expect(buildShortcutUrl("room key")).toContain("shortcuts://run-shortcut?");
-    expect(buildShortcutUrl("room key")).toContain("name=SHOWROOM%20PiP");
+    expect(buildShortcutUrl("room key")).toContain("name=SHOWROOM-PiP");
   });
 });

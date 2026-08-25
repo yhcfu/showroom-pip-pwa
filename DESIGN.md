@@ -89,6 +89,7 @@
 - Design-token constraints: extend current local colors and radii; do not add a component library
 - Performance constraints: no new runtime dependency; bookmarklet remains generated locally
 - Compatibility constraints: GitHub Pages only; API resolution stays inside the signed Apple Shortcut or the SHOWROOM-origin bookmarklet
+- The installed iOS Shortcut name is `SHOWROOM-PiP`, derived from the distributed filename; the launcher must use that exact name
 - Test/screenshot expectations: unit-test generated bookmarklet behavior; verify desktop and mobile DOM plus public Pages build
 
 ## Open questions
