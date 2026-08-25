@@ -7,12 +7,13 @@
 - iOSのstandalone PWAではPiPが失敗する既知問題があるため、scope外のSafari playerを使う。
 - iPhoneのホーム画面Web AppとSafariはstorageが分かれるため、iOSのPWA履歴はroomIdではなくroom keyで重複排除する。
 - Androidではブックマークレットを一度登録し、SHOWROOMページ上で実行する必要がある。
-- PCはSHOWROOM公式プレイヤーを開くランチャーとして動作し、自作PlayerやPiPは提供しない。
-- PCのシアター表示はブラウザのpopup制御に依存し、設定によっては通常のタブで開く。
-- サーバーを使わない現在の構成では、配信開始の自動検知と通知はできない。
+- PCの動画専用PlayerはVercel Resolverへ接続できるときだけ配信URLを取得できる。Resolver停止時や無料枠超過時は再生できない。
+- PCのPiPは対象外。ウィンドウ追従表示とFullscreen APIによる全画面を提供する。
+- 現在のResolverは要求時のURL解決だけを行うため、配信開始の自動検知と通知はできない。
 - 配信終了、room key誤り、限定・有料配信、地域制限には対応しない。
 - 非公開APIのfield名やendpointが変われば修正が必要になる。
 - HLSだけの視聴がSHOWROOM上の視聴者数へ反映されるかは未確認。
+- SHOWROOMのコメント、ギフト、イベント情報など、映像以外のUIは表示しない。
 
 ## 利用上の境界
 

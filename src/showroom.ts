@@ -47,6 +47,18 @@ export function buildPlayerUrl(streamUrl: string, currentUrl: string, room?: Omi
   return url.toString();
 }
 
+export function buildRoomPlayerUrl(roomKey: string, currentUrl: string): string {
+  const url = new URL(currentUrl);
+  url.search = new URLSearchParams({ room: parseRoomKey(roomKey) }).toString();
+  url.hash = "";
+  return url.toString();
+}
+
+export function readRoomKeyFromPlayerUrl(url: string): string | null {
+  const room = new URL(url).searchParams.get("room");
+  return room ? parseRoomKey(room) : null;
+}
+
 export function readPlayerHandoff(hash: string): PlayerHandoff | null {
   const value = new URLSearchParams(hash.replace(/^#/, "")).get("stream");
   if (!value) return null;

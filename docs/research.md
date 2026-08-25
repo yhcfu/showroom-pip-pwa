@@ -21,7 +21,7 @@ SHOWROOMのルームページはiframe埋め込みを拒否します。また、
 
 - iPhone: AppleショートカットのHTTPアクションで取得する。
 - Android: SHOWROOMページ上のブックマークレットでsame-origin取得する。
-- PC: HLS取得を行わず、SHOWROOM公式プレイヤーを開くランチャーに限定する。
+- PC: 小さなsame-origin許可済みResolverでHLS URLを取得し、PWAの動画専用Playerで再生する。
 
 ## WASMでは解決しない
 
@@ -29,6 +29,8 @@ WASMのネットワーク処理も、ブラウザ内では`fetch`やWebSocketな
 
 WASMが有効なのは、取得済みデータの解析やcodec処理です。今回詰まっているのは計算処理ではなく、別originのresponseをJavaScriptから読めないことなので、解決手段にはなりません。
 
-## サーバーを後回しにする判断
+## 最小のサーバーを採用する判断
 
-静的版で残る手作業は、iPhoneのショートカット作成とAndroidのブックマークレット登録です。この範囲で実機のPiP到達性を先に確認し、バックグラウンド通知が本当に必要になった時点でだけ[サーバーフェーズ](server-phase.md)へ進みます。
+PCでもSHOWROOM UIを除いたPlayerを提供するには、ブラウザ外でAPIを2回呼ぶ処理だけは必要です。そこでVercel Functionを採用し、状態保存、動画proxy、定期実行を持たせません。映像帯域はVercelを通らず、利用者のブラウザがSHOWROOM CDNから直接受け取ります。
+
+バックグラウンド通知に必要な状態管理と定期実行は、引き続き[サーバーフェーズ](server-phase.md)へ分離します。

@@ -1,6 +1,7 @@
 import "./style.css";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
-import { buildPlayerUrl, readPlayerHandoff, type PlayerHandoff } from "./showroom";
+import { resolveRoom } from "./resolver";
+import { buildPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
 
 declare global {
   interface HTMLVideoElement {
@@ -10,28 +11,32 @@ declare global {
 }
 
 const HISTORY_KEY = "showroom-pip-history-v1";
+const resolverUrl = import.meta.env.VITE_RESOLVER_URL || "";
+const stage = document.querySelector<HTMLElement>(".player-stage")!;
 const video = document.querySelector<HTMLVideoElement>("#video")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
-const copyButton = document.querySelector<HTMLButtonElement>("#copy-player-url")!;
+const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
 const emptyState = document.querySelector<HTMLElement>("#empty-state")!;
+const emptyMessage = document.querySelector<HTMLElement>("#empty-message")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const backToApp = document.querySelector<HTMLAnchorElement>("#back-to-app")!;
 const appBase = new URL(`${import.meta.env.BASE_URL}app/`, location.origin);
 backToApp.href = appBase.toString();
 
 let hls: import("hls.js").default | null = null;
-let activeHandoff: PlayerHandoff | null = null;
 
 function setStatus(message: string, isError = false) {
   status.textContent = message;
   status.classList.toggle("error", isError);
+  emptyState.classList.toggle("error", isError);
+  if (isError) emptyMessage.textContent = message;
 }
 
 function enablePipWhenReady() {
   const standardPip = document.pictureInPictureEnabled && typeof video.requestPictureInPicture === "function";
   const webkitPip = video.webkitSupportsPresentationMode?.("picture-in-picture") === true;
   pipButton.disabled = video.readyState === HTMLMediaElement.HAVE_NOTHING || (!standardPip && !webkitPip);
-  if (!pipButton.disabled) setStatus("準備できました。動画を再生してからPiPボタンを押してください。");
+  if (!pipButton.disabled) setStatus("準備できました。");
 }
 
 video.addEventListener("loadedmetadata", enablePipWhenReady);
@@ -42,6 +47,8 @@ video.addEventListener("error", () => {
   pipButton.disabled = true;
   setStatus("動画を読み込めませんでした。配信が終了していないか確認してください。", true);
 });
+video.addEventListener("playing", () => stage.classList.add("playing"));
+video.addEventListener("pause", () => stage.classList.remove("playing"));
 
 function rememberHandoff(handoff: PlayerHandoff) {
   if (!handoff.roomKey) return;
@@ -58,7 +65,6 @@ function rememberHandoff(handoff: PlayerHandoff) {
 async function loadStream(handoff: PlayerHandoff) {
   hls?.destroy();
   hls = null;
-  activeHandoff = handoff;
   emptyState.hidden = true;
   pipButton.disabled = true;
   setStatus("配信を読み込んでいます…");
@@ -81,7 +87,6 @@ async function loadStream(handoff: PlayerHandoff) {
   }
 
   rememberHandoff(handoff);
-  copyButton.disabled = false;
   history.replaceState(null, "", buildPlayerUrl(handoff.streamUrl, location.href, handoff));
   try {
     await video.play();
@@ -106,16 +111,30 @@ pipButton.addEventListener("click", async () => {
   }
 });
 
-copyButton.addEventListener("click", async () => {
-  if (!activeHandoff) return;
-  await navigator.clipboard.writeText(buildPlayerUrl(activeHandoff.streamUrl, location.href, activeHandoff));
-  setStatus("再生リンクをコピーしました。HLS URLを含むため共有は避けてください。");
+fullscreenButton.addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await video.requestFullscreen();
+  } catch {
+    setStatus("全画面表示を開始できませんでした。", true);
+  }
 });
+
+document.addEventListener("fullscreenchange", () => {
+  fullscreenButton.textContent = document.fullscreenElement ? "全画面を終了" : "全画面";
+});
+
+if (typeof video.requestFullscreen !== "function") fullscreenButton.hidden = true;
 
 try {
   const handoff = readPlayerHandoff(location.hash);
-  if (!handoff) throw new Error("再生リンクがありません。PWAの履歴からルームを開いてください。");
-  void loadStream(handoff).catch((error: unknown) => {
+  const roomKey = readRoomKeyFromPlayerUrl(location.href);
+  const pending = handoff
+    ? Promise.resolve(handoff)
+    : roomKey
+      ? resolveRoom(roomKey, resolverUrl)
+      : Promise.reject(new Error("再生するルームが指定されていません。"));
+  void pending.then(loadStream).catch((error: unknown) => {
     setStatus(error instanceof Error ? error.message : "再生に失敗しました。", true);
   });
 } catch (error) {

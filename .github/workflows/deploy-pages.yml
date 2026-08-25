@@ -34,7 +34,13 @@ jobs:
       - name: Test and build
         env:
           VITE_BASE_PATH: ${{ endsWith(github.event.repository.name, '.github.io') && '/' || format('/{0}/', github.event.repository.name) }}
-        run: npm run check
+          VITE_RESOLVER_URL: ${{ vars.RESOLVER_URL }}
+        run: |
+          if [ -z "$VITE_RESOLVER_URL" ]; then
+            echo "::error::Repository variable RESOLVER_URL is required"
+            exit 1
+          fi
+          npm run check
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Upload Pages artifact

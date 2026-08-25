@@ -1,6 +1,6 @@
 # Androidのブックマークレット
 
-Androidでは、SHOWROOMのルームページと同じoriginでJavaScriptを実行します。これにより、外部PWAからはCORSで読めないAPIを、SHOWROOMページ自身から取得できます。PCはこの方式を使わず、公式プレイヤーを直接開きます。
+Androidでは、SHOWROOMのルームページと同じoriginでJavaScriptを実行します。これにより、外部PWAからはCORSで読めないAPIを、SHOWROOMページ自身から取得できます。PCはこの方式を使わず、PWAのResolver経由で動画専用Playerを開きます。
 
 ## Androidで初回だけ行うこと
 

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildPlayerUrl, buildShortcutUrl, parseRoomKey, readPlayerHandoff, readStreamFromHash } from "./showroom";
+import {
+  buildPlayerUrl,
+  buildRoomPlayerUrl,
+  buildShortcutUrl,
+  parseRoomKey,
+  readPlayerHandoff,
+  readRoomKeyFromPlayerUrl,
+  readStreamFromHash,
+} from "./showroom";
 
 describe("parseRoomKey", () => {
   it("accepts a room key", () => expect(parseRoomKey("room_123-A")).toBe("room_123-A"));
@@ -34,5 +42,11 @@ describe("handoff URLs", () => {
   it("creates an Apple Shortcuts URL", () => {
     expect(buildShortcutUrl("room key")).toContain("shortcuts://run-shortcut?");
     expect(buildShortcutUrl("room key")).toContain("name=SHOWROOM-PiP");
+  });
+
+  it("builds a player URL that resolves a room without exposing an HLS URL", () => {
+    const result = buildRoomPlayerUrl("room-a", "https://user.github.io/showroom-pip/player/#old");
+    expect(result).toBe("https://user.github.io/showroom-pip/player/?room=room-a");
+    expect(readRoomKeyFromPlayerUrl(result)).toBe("room-a");
   });
 });

@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 const html = readFileSync(new URL("../app/index.html", import.meta.url), "utf8");
 
 describe("desktop launcher", () => {
-  it("offers normal and theater views without desktop bookmarklet setup", () => {
+  it("offers the dedicated player without desktop bookmarklet setup", () => {
     expect(html).toContain('id="open-room-button"');
-    expect(html).toContain('id="theater-room-button"');
+    expect(html).toContain("プレイヤーで見る");
+    expect(html).not.toContain('id="theater-room-button"');
     expect(html).not.toContain('id="desktop-tools"');
     expect(html).not.toContain('id="bookmarklet-link"');
   });

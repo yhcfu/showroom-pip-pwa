@@ -1,14 +1,34 @@
-# GitHub Pagesへのデプロイ
+# GitHub PagesとResolverへのデプロイ
 
-現在の構成で必要な外部サービスはGitHub Pagesだけです。Cloudflare account、database、secretは使いません。
+静的画面はGitHub Pagesへ置きます。PC向けの配信URL解決だけは、Vercel Functionへdeployします。database、定期処理、secret、動画proxyは使いません。Vercel Hobbyの無料枠は個人・非商用利用が対象です。
 
-## 初回設定
+## 1. Resolverをdeployする
+
+Vercelへloginしてrepository rootで実行します。
+
+```bash
+npx vercel login
+npx vercel
+npx vercel --prod
+```
+
+生成された`https://<project>.vercel.app`を控え、次を確認します。
+
+```bash
+curl -H 'Origin: https://yhcfu.github.io' \
+  'https://<project>.vercel.app/api/resolve?room=<配信中のroom key>'
+```
+
+Resolverは既定で`https://yhcfu.github.io`とlocalhostだけを許可します。別のGitHub Pages ownerから使う場合は、Vercel projectの`ALLOWED_ORIGINS`へoriginをカンマ区切りで追加してください。
+
+## 2. GitHub Pagesを設定する
 
 1. repositoryをGitHubへpushする。
 2. GitHubのSettings → Pagesを開く。
 3. Build and deploymentのSourceで「GitHub Actions」を選ぶ。
-4. default branchが`main`であることを確認する。
-5. `main`へpushするか、Actionsから「Deploy GitHub Pages」を手動実行する。
+4. Settings → Secrets and variables → Actions → Variablesで`RESOLVER_URL`を作り、上のVercel URLを設定する。
+5. default branchが`main`であることを確認する。
+6. `main`へpushするか、Actionsから「Deploy GitHub Pages」を手動実行する。
 
 [deploy workflow](../.github/workflows/deploy-pages.yml)は`npm ci`、`npm run check`、`dist/`のupload、Pages deploymentを順番に行います。repository名からViteのbase pathを自動設定するため、project siteと`<user>.github.io` repositoryの両方に対応します。
 
@@ -27,7 +47,7 @@ PWA:       https://yhcfu.github.io/showroom-pip-pwa/app/
 Player:    https://yhcfu.github.io/showroom-pip-pwa/player/
 ```
 
-公開版には署名済みの[iPhone Shortcut](ios-shortcut.md)を含めます。AndroidはPWAからブックマークレットをコピーし、既存ブックマークのURL欄へ貼り付けます。PCは追加設定をせず、SHOWROOM公式プレイヤーを通常タブまたはシアターウィンドウで開きます。iPhoneとAndroidの経路には公開中のPlayer URLが埋め込まれています。
+公開版には署名済みの[iPhone Shortcut](ios-shortcut.md)を含めます。AndroidはPWAからブックマークレットをコピーし、既存ブックマークのURL欄へ貼り付けます。PCは追加設定をせず、同じGitHub Pages上の動画専用Playerを開きます。iPhoneとAndroidの経路には公開中のPlayer URLが埋め込まれています。
 
 ## デプロイしないもの
 
@@ -35,7 +55,9 @@ Player:    https://yhcfu.github.io/showroom-pip-pwa/player/
 - HLS manifestや動画segment
 - HLS URLのdatabaseやログ
 - ルーム履歴
-- API proxy、定期polling、Web Push sender
+- 動画proxy、定期polling、Web Push sender
+
+Resolverが扱うのはroom keyと、その時点の公開配信メタデータだけです。永続化はしません。
 
 バックグラウンド通知は[後続フェーズ](server-phase.md)です。
 

@@ -4,33 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#11131a" />
-    <meta name="description" content="SHOWROOM PiPのSafariプレイヤー" />
+    <meta name="description" content="SHOWROOMの映像だけを表示するレスポンシブプレイヤー" />
     <link rel="icon" href="../icon.svg" type="image/svg+xml" />
     <title>SHOWROOM PiP Player</title>
   </head>
-  <body>
-    <main class="shell player-shell">
-      <header class="player-header">
-        <p class="eyebrow">SAFARI / BROWSER PLAYER</p>
-        <h1>SHOWROOM <span>PiP</span></h1>
-      </header>
-
-      <section class="player-card" aria-label="動画プレイヤー">
-        <div class="video-frame">
-          <video id="video" controls playsinline preload="metadata"></video>
-          <div id="empty-state" class="empty-state">
-            <span class="pulse"></span>
-            <p>ここは再生画面です。ショートカットから開いてください。</p>
-          </div>
+  <body class="player-page">
+    <main class="player-stage" aria-label="SHOWROOM動画プレイヤー">
+      <video id="video" controls playsinline preload="metadata"></video>
+      <div id="empty-state" class="empty-state">
+        <span class="pulse"></span>
+        <p id="empty-message">配信を確認しています…</p>
+      </div>
+      <div class="player-overlay">
+        <a id="back-to-app" class="player-tool" href="../app/">← 履歴</a>
+        <p id="status" class="player-status" role="status" aria-live="polite">リンクを確認中…</p>
+        <div class="player-tools">
+          <button id="pip-button" class="player-tool" type="button" disabled>PiP</button>
+          <button id="fullscreen-button" class="player-tool" type="button">全画面</button>
         </div>
-        <div class="player-actions">
-          <button id="pip-button" class="primary" type="button" disabled>ピクチャ・イン・ピクチャ</button>
-          <button id="copy-player-url" class="secondary" type="button" disabled>再生リンクをコピー</button>
-        </div>
-      </section>
-
-      <p id="status" class="status" role="status" aria-live="polite">リンクを確認中…</p>
-      <a id="back-to-app" class="secondary action-link" href="../app/">履歴へ戻る</a>
+      </div>
     </main>
     <script type="module" src="/src/player.ts"></script>
   </body>

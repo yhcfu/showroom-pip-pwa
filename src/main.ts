@@ -1,8 +1,8 @@
 import "./style.css";
 import { buildBookmarklet } from "./bookmarklet";
 import { parseRoomHistory, upsertRoomHistory, type RoomHistoryEntry } from "./history";
-import { buildShowroomRoomUrl, buildTheaterWindowFeatures, detectPlatform } from "./platform";
-import { buildPlayerUrl, buildShortcutUrl, parseRoomKey, readPlayerHandoff } from "./showroom";
+import { buildShowroomRoomUrl, detectPlatform } from "./platform";
+import { buildPlayerUrl, buildRoomPlayerUrl, buildShortcutUrl, parseRoomKey, readPlayerHandoff } from "./showroom";
 
 type InstallPromptEvent = Event & {
   prompt(): Promise<void>;
@@ -16,7 +16,6 @@ const roomInput = document.querySelector<HTMLInputElement>("#room")!;
 const hlsInput = document.querySelector<HTMLInputElement>("#hls-url")!;
 const copyBookmarkletButton = document.querySelector<HTMLButtonElement>("#copy-bookmarklet")!;
 const openRoomButton = document.querySelector<HTMLButtonElement>("#open-room-button")!;
-const theaterRoomButton = document.querySelector<HTMLButtonElement>("#theater-room-button")!;
 const roomStepNumber = document.querySelector<HTMLElement>("#room-step-number")!;
 const nextStep = document.querySelector<HTMLElement>("#next-step")!;
 const historyContainer = document.querySelector<HTMLElement>("#room-history")!;
@@ -69,9 +68,7 @@ function selectRoom(roomKey: string) {
   roomInput.value = roomKey;
 }
 
-type OpenMode = "default" | "theater";
-
-function openRoom(roomKey: string, mode: OpenMode = "default") {
+function openRoom(roomKey: string) {
   selectRoom(roomKey);
   rememberRoom(roomKey);
   if (platform === "ios") {
@@ -79,24 +76,11 @@ function openRoom(roomKey: string, mode: OpenMode = "default") {
     return;
   }
 
-  const roomUrl = buildShowroomRoomUrl(roomKey);
   if (platform === "desktop") {
-    const theater = mode === "theater";
-    const roomWindow = window.open(
-      roomUrl,
-      theater ? "showroom-theater" : "_blank",
-      theater ? buildTheaterWindowFeatures(window.screen) : undefined,
-    );
-    if (roomWindow) {
-      roomWindow.opener = null;
-      roomWindow.focus();
-      setStatus(theater
-        ? "SHOWROOMをシアターウィンドウで開きました。全画面はプレイヤー内のボタンを使えます。"
-        : "SHOWROOMを新しいタブで開きました。");
-      return;
-    }
+    location.href = buildRoomPlayerUrl(roomKey, playerBase.toString());
+    return;
   }
-  location.href = roomUrl;
+  location.href = buildShowroomRoomUrl(roomKey);
 }
 
 function renderHistory() {
@@ -135,16 +119,6 @@ function renderHistory() {
     open.setAttribute("aria-label", platform === "desktop" ? `${roomLabel}を見る` : `${roomLabel}をPiPで見る`);
     open.addEventListener("click", () => openRoom(room.roomKey));
     actions.append(open);
-
-    if (platform === "desktop") {
-      const theater = document.createElement("button");
-      theater.type = "button";
-      theater.className = "room-theater";
-      theater.textContent = "シアター";
-      theater.setAttribute("aria-label", `${roomLabel}をシアターで見る`);
-      theater.addEventListener("click", () => openRoom(room.roomKey, "theater"));
-      actions.append(theater);
-    }
 
     const remove = document.createElement("button");
     remove.type = "button";
@@ -197,9 +171,7 @@ function setupInstallGuide() {
 roomForm.addEventListener("submit", (event) => {
   event.preventDefault();
   try {
-    const submitter = (event as SubmitEvent).submitter;
-    const mode = submitter === theaterRoomButton ? "theater" : "default";
-    openRoom(parseRoomKey(roomInput.value), mode);
+    openRoom(parseRoomKey(roomInput.value));
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "ルームを読み取れませんでした。", true);
   }
@@ -240,10 +212,9 @@ if (platform === "ios") {
   platformNote.textContent = "URLを貼る → SHOWROOMで保存したブックマークを押す → PiP。";
 } else {
   roomStepNumber.textContent = "1";
-  theaterRoomButton.hidden = false;
   historyHint.textContent = "履歴はこのPC内だけに保存されます。";
-  nextStep.textContent = "「見る」は新しいタブ、「シアター」は専用ウィンドウでSHOWROOMを開きます。";
-  platformNote.textContent = "履歴から公式プレイヤーをすぐ開けます。初回設定はありません。";
+  nextStep.textContent = "映像だけの専用プレイヤーへ移動します。ウィンドウサイズに合わせて表示します。";
+  platformNote.textContent = "ルームを選ぶと、装飾のない専用プレイヤーですぐ再生します。";
 }
 
 setupInstallGuide();
