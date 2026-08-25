@@ -10,11 +10,20 @@ SHOWROOMの公開ライブ配信をHLSとして読み込み、ブラウザのPic
 - iPhone/iPadのホーム画面に追加したstandalone PWAでは、WebKitの既知問題によりPiPを開始できません。通常のSafariでプレイヤーを開く必要があります。
 - HLS URL取得後の動画本体はCDNから端末へ直接流れます。付属Resolverは動画を中継しません。
 
+## 履歴と配信検知
+
+- 一度入力したルームは端末内へ最大20件保存します。
+- Resolverまたは端末Bridgeから取得した`room_id`で重複を除きます。
+- 履歴から1タップで再取得できます。
+- 配信検知をONにすると、PWAを開いている間は60秒ごとにまとめて確認します。
+- 対応AndroidではPeriodic Background Syncも試します。付属WorkerへD1、Cron、Web Pushを設定すると、閉じたiPhone/Androidにも通知できます。
+- iPhoneで通知を使うための「ホーム画面に追加」手順は、未追加時にサイト上へ表示します。
+
 ## 用意した3経路
 
 1. **完全サーバーレス（iPhone推奨）**: PWAからAppleショートカットを起動し、端末上でSHOWROOM APIを取得してSafariプレイヤーへ渡す。
 2. **完全サーバーレス（手動）**: SHOWROOMページ上のブックマークレット、または取得済みHLS URLを直接入力する。
-3. **通常操作が最も簡単**: GitHub Pages + 無料枠のCloudflare Worker Resolver。ルームURLをPWAへ貼るだけ。
+3. **通常操作が最も簡単**: GitHub Pages + 無料枠のCloudflare Worker。ルームURLの解決と、任意で閉じた端末へのWeb Pushを行う。
 
 ## ローカル起動
 
@@ -44,6 +53,7 @@ npm run check
 - [iPhoneショートカット（サーバー不要）](docs/ios-shortcut.md)
 - [ブックマークレット（サーバー不要）](docs/bookmarklet.md)
 - [GitHub Pages / Cloudflareへのデプロイ](docs/deployment.md)
+- [履歴・配信検知・通知](docs/history-and-notifications.md)
 - [制約・利用上の注意](docs/limitations.md)
 
 ## 対応範囲

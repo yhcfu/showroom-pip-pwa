@@ -20,6 +20,20 @@
 
       <section id="platform-note" class="notice" hidden></section>
 
+      <section id="install-guide" class="install-guide" hidden>
+        <div>
+          <strong id="install-title">ホーム画面に追加</strong>
+          <p id="install-summary">iPhoneで通知を受け取るための準備です。</p>
+        </div>
+        <button id="install-button" class="secondary" type="button">追加手順を見る</button>
+        <ol id="install-steps" hidden>
+          <li>Safari下部の共有ボタン（四角から上向き矢印）を押す</li>
+          <li>メニューを下へ送り、「ホーム画面に追加」を選ぶ</li>
+          <li>右上の「追加」を押す</li>
+          <li>ホーム画面にできたアイコンから起動する</li>
+        </ol>
+      </section>
+
       <section class="player-card" aria-label="動画プレイヤー">
         <div class="video-frame">
           <video id="video" controls playsinline preload="metadata"></video>
@@ -43,6 +57,22 @@
           </div>
         </form>
 
+        <section class="history-section" aria-labelledby="history-heading">
+          <div class="section-heading">
+            <div>
+              <h2 id="history-heading">最近開いたルーム</h2>
+              <p id="watch-capability" class="hint">履歴はこの端末内だけに保存されます。</p>
+            </div>
+            <div class="watch-actions">
+              <button id="watch-toggle" class="compact-button" type="button">配信検知 OFF</button>
+              <button id="notification-button" class="compact-button" type="button">通知を許可</button>
+            </div>
+          </div>
+          <div id="room-history" class="room-history">
+            <p class="history-empty">まだ履歴はありません。</p>
+          </div>
+        </section>
+
         <a id="shortcut-button" class="shortcut-button" href="shortcuts://run-shortcut?name=SHOWROOM%20PiP&amp;input=text&amp;text=">
           iPhoneショートカットで開く
         </a>
@@ -54,6 +84,10 @@
             <label for="resolver">Resolver URL</label>
             <input id="resolver" inputmode="url" placeholder="https://showroom-pip-resolver.example.workers.dev" />
             <p class="hint">GitHub PagesだけではSHOWROOM APIのCORS制限を越えられないため、通常取得時だけ使用します。</p>
+
+            <label for="watch-token">バックグラウンド通知Token（任意）</label>
+            <input id="watch-token" type="password" autocomplete="off" placeholder="Cloudflare Workerに設定したWATCH_TOKEN" />
+            <p class="hint">PWAを閉じた後も通知する場合だけ設定します。Tokenはこの端末内に保存され、Resolver以外へは送りません。</p>
 
             <form id="hls-form">
               <label for="hls-url">HLS master URL</label>

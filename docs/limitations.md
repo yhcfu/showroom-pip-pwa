@@ -8,6 +8,8 @@
 - 配信終了、room key誤り、限定/有料配信、地域制限には非対応。
 - 非公開APIのため、field名やendpoint変更時は修正が必要。
 - HLSだけの視聴がSHOWROOM上の視聴者数へ反映されるかは未確認。
+- PWAを閉じた後のJavaScript常駐はできない。Periodic Background Syncの有無と実行頻度はブラウザが決める。
+- iPhoneでWeb通知を許可できるのは、iOS/iPadOS 16.4以降でホーム画面に追加したWeb App。閉じた状態への通知にはWeb Push送信側が必要。
 
 ## 利用上の境界
 

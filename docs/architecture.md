@@ -10,9 +10,16 @@ GitHub Pages PWA
                                                 └→ player#stream=...
 
 player <video> ─────────────────────────────────→ SHOWROOM HLS CDN
+
+Cloudflare Cron → Worker /status → D1の直前状態と比較
+                                  └→ OFF→LIVEだけWeb Push → iPhone / Android
 ```
 
-映像はSHOWROOM側CDNから端末へ直接取得します。Workerの役割は小さく、`room_url_key`から公開HLS master URLを解決するだけです。
+履歴はPWAの`localStorage`だけに保存します。`room_id`を取得できた時点で同じルームを統合します。配信検知はPWAからResolverの`/status`へ最大20件をまとめて渡し、画面表示中は60秒ごとに状態変化を確認します。
+
+映像はSHOWROOM側CDNから端末へ直接取得します。ここはWorkerを通りません。
+
+Workerは`room_url_key`から公開HLS master URLを解決します。Web Pushを有効にした場合だけ、Push購読情報・監視対象・直前のLIVE状態をD1へ保存します。
 
 ## URL fragmentを使う理由
 
@@ -29,6 +36,8 @@ player <video> ─────────────────────�
 - タイムアウトは5秒
 - Cookie・認証情報を受け取らない、転送しない
 - `hls_all`、なければ公開`hls`だけを返す
+- `/status`は最大20件の固定形式room keyだけを受け付ける
+- `/push/subscription`は共有の`WATCH_TOKEN`が一致するときだけ更新できる
 - HLS URLをキャッシュ・保存しない
 - CORSは`ALLOWED_ORIGINS`に列挙した自分のPages originだけ
 

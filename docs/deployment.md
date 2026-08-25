@@ -13,7 +13,7 @@ workflowはrepository名をViteのbase pathへ自動設定するため、`https:
 
 ## B. GitHub Pages + Cloudflare Worker（どちらも無料枠）
 
-PWAへルームURLを貼るだけの操作にしたい場合の推奨構成です。
+PWAへルームURLを貼るだけの操作、履歴の配信検知、閉じたiPhone/AndroidへのWeb Pushを使う場合の推奨構成です。URL解決だけなら「Worker」まで、Web Pushも使うなら「D1とWeb Push」まで設定します。
 
 ### Worker
 
@@ -32,6 +32,38 @@ npm run deploy:resolver
 
 表示された`https://showroom-pip-resolver.<subdomain>.workers.dev`を控えます。
 
+### D1とWeb Push（任意）
+
+まずD1 databaseを作成します。
+
+```bash
+npx wrangler d1 create showroom-pip --config worker/wrangler.jsonc
+```
+
+表示された`database_id`を`worker/wrangler.jsonc`末尾のコメント例へ入れ、`triggers`と`d1_databases`を有効にします。その後、migrationを適用します。
+
+```bash
+npx wrangler d1 migrations apply showroom-pip --remote --config worker/wrangler.jsonc
+```
+
+VAPID keyを1回だけ生成し、出力値をパスワード管理ツールへ保存します。秘密鍵はcommitしません。
+
+```bash
+npm run vapid:generate
+npx wrangler secret put VAPID_PUBLIC_KEY --config worker/wrangler.jsonc
+npx wrangler secret put VAPID_PRIVATE_KEY --config worker/wrangler.jsonc
+npx wrangler secret put VAPID_SUBJECT --config worker/wrangler.jsonc
+```
+
+`VAPID_SUBJECT`には自分が管理する`mailto:you@example.com`またはHTTPS URLを設定します。次に、十分長いランダムな`WATCH_TOKEN`をパスワード管理ツールで作り、同じ値をWorker secretへ登録します。
+
+```bash
+npx wrangler secret put WATCH_TOKEN --config worker/wrangler.jsonc
+npm run deploy:resolver
+```
+
+PWAをホーム画面から開き、設定欄へResolver URLと同じ`WATCH_TOKEN`を入力します。「配信検知」をONにしてから「通知を許可」を押してください。iPhoneでは通常のSafariタブではなく、ホーム画面へ追加したPWAから操作します。
+
 ### PagesへResolver URLを渡す
 
 GitHub repositoryのSettings → Secrets and variables → Actions → Variablesで次を追加します。
@@ -44,9 +76,9 @@ VITE_RESOLVER_URL=https://showroom-pip-resolver.<subdomain>.workers.dev
 
 ### 無料枠の見積もり
 
-[Cloudflare Workers公式料金表](https://developers.cloudflare.com/workers/platform/pricing/)では、Free planは1日100,000 request、1 invocationあたり10ms CPUです。WorkerからSHOWROOMへのsubrequestはrequest課金対象外です。このResolverは1再生開始につきWorker 1 request、短いJSON upstream request 2回だけで、動画は中継しません。個人利用なら無料枠に十分収まる設計です。
+[Cloudflare Workers公式料金表](https://developers.cloudflare.com/workers/platform/pricing/)では、Free planは1日100,000 request、1 invocationあたり10ms CPUです。WorkerからSHOWROOMへのsubrequestはrequest課金対象外です。このResolverは再生開始時の`/resolve`に加え、最大20ルームをまとめて確認する`/status`を提供します。動画は中継しません。個人利用なら無料枠に十分収まる設計です。
 
-Free planは上限超過後のrequestが失敗する方式で、従量課金へ自動移行しません。ただしCloudflareの料金・規約は変更され得るため、deploy時に公式画面で再確認してください。
+Free planは上限超過後のrequestが失敗する方式です。ただしCloudflareの料金・規約は変更され得るため、deploy時に公式画面で再確認してください。Web Pushを2分間隔で1端末・20ルーム監視する場合、Cronは720回/日、D1の状態更新はおおむね720回/日です。
 
 ## C. Cloudflareだけに統合
 
@@ -61,4 +93,5 @@ Free planは上限超過後のrequestが失敗する方式で、従量課金へ�
 - HLS manifestやsegment
 - SHOWROOM cookie/session
 - 取得済みHLS URLのログ・DB
+- ルームの再生時刻・視聴回数
 - 公開CORS proxy

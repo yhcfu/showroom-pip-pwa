@@ -6,5 +6,13 @@
   "workers_dev": true,
   "vars": {
     "ALLOWED_ORIGINS": "http://localhost:5173"
-  }
+  },
+  // Web Pushを使う場合は、D1作成後に次を有効化します。
+  // "triggers": { "crons": ["*/2 * * * *"] },
+  // "d1_databases": [{
+  //   "binding": "DB",
+  //   "database_name": "showroom-pip",
+  //   "database_id": "YOUR_D1_DATABASE_ID",
+  //   "migrations_dir": "migrations"
+  // }]
 }

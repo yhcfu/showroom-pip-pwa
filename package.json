@@ -12,9 +12,11 @@
     "build": "tsc --noEmit && tsc -p worker/tsconfig.json && vite build",
     "test": "vitest run",
     "check": "npm run test && npm run build",
+    "vapid:generate": "node scripts/generate-vapid.mjs",
     "deploy:resolver": "wrangler deploy --config worker/wrangler.jsonc"
   },
   "dependencies": {
+    "@mmmike/web-push": "^1.3.0",
     "hls.js": "^1.6.13"
   },
   "devDependencies": {

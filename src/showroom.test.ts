@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlayerUrl, buildShortcutUrl, parseRoomKey, readStreamFromHash } from "./showroom";
+import { buildPlayerUrl, buildShortcutUrl, parseRoomKey, readPlayerHandoff, readStreamFromHash } from "./showroom";
 
 describe("parseRoomKey", () => {
   it("accepts a room key", () => expect(parseRoomKey("room_123-A")).toBe("room_123-A"));
@@ -15,9 +15,19 @@ describe("handoff URLs", () => {
   const stream = "https://cdn.example.test/live/master.m3u8?token=a&b=2";
 
   it("keeps the HLS URL in the fragment", () => {
-    const result = buildPlayerUrl(stream, "https://user.github.io/showroom-pip/?old=1");
+    const result = buildPlayerUrl(stream, "https://user.github.io/showroom-pip/?old=1", {
+      roomKey: "room-a",
+      roomId: 42,
+      roomName: "Room A",
+    });
     expect(result).not.toContain("?old=1");
     expect(readStreamFromHash(new URL(result).hash)).toBe(stream);
+    expect(readPlayerHandoff(new URL(result).hash)).toEqual({
+      streamUrl: stream,
+      roomKey: "room-a",
+      roomId: 42,
+      roomName: "Room A",
+    });
   });
 
   it("creates an Apple Shortcuts URL", () => {

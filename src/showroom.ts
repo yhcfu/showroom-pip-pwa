@@ -27,19 +27,42 @@ export function buildShortcutUrl(room: string): string {
   return `shortcuts://run-shortcut?name=${encodeURIComponent("SHOWROOM PiP")}&input=text&text=${encodeURIComponent(room.trim())}`;
 }
 
-export function buildPlayerUrl(streamUrl: string, currentUrl: string): string {
+export type PlayerHandoff = {
+  streamUrl: string;
+  roomKey?: string;
+  roomId?: number;
+  roomName?: string;
+};
+
+export function buildPlayerUrl(streamUrl: string, currentUrl: string, room?: Omit<PlayerHandoff, "streamUrl">): string {
   const url = new URL(currentUrl);
   url.search = "";
-  url.hash = new URLSearchParams({ stream: streamUrl }).toString();
+  const fragment = new URLSearchParams({ v: "1", status: "ok", stream: streamUrl });
+  if (room?.roomKey) fragment.set("room", room.roomKey);
+  if (room?.roomId !== undefined) fragment.set("room_id", String(room.roomId));
+  if (room?.roomName) fragment.set("room_name", room.roomName);
+  url.hash = fragment.toString();
   return url.toString();
 }
 
-export function readStreamFromHash(hash: string): string | null {
+export function readPlayerHandoff(hash: string): PlayerHandoff | null {
   const value = new URLSearchParams(hash.replace(/^#/, "")).get("stream");
   if (!value) return null;
   const url = new URL(value);
   if (url.protocol !== "https:" || !url.pathname.endsWith(".m3u8")) {
     throw new Error("再生リンクに有効なHTTPS HLS URLがありません。");
   }
-  return url.toString();
+  const fragment = new URLSearchParams(hash.replace(/^#/, ""));
+  const roomIdValue = fragment.get("room_id");
+  const roomId = roomIdValue === null ? undefined : Number(roomIdValue);
+  return {
+    streamUrl: url.toString(),
+    roomKey: fragment.get("room") || undefined,
+    roomId: roomId !== undefined && Number.isSafeInteger(roomId) && roomId > 0 ? roomId : undefined,
+    roomName: fragment.get("room_name") || undefined,
+  };
+}
+
+export function readStreamFromHash(hash: string): string | null {
+  return readPlayerHandoff(hash)?.streamUrl || null;
 }

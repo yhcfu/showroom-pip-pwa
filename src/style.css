@@ -18,7 +18,7 @@ h1 { margin: 0; font-size: clamp(38px, 10vw, 70px); line-height: .95; letter-spa
 h1 span { color: #caa7ff; }
 .lead { max-width: 540px; margin: 18px 0 0; color: #aaaab4; line-height: 1.7; }
 
-.player-card, .control-card, .notice { border: 1px solid rgba(255,255,255,.10); border-radius: 22px; background: rgba(22,23,31,.78); box-shadow: 0 20px 60px rgba(0,0,0,.25); backdrop-filter: blur(16px); }
+.player-card, .control-card, .notice, .install-guide { border: 1px solid rgba(255,255,255,.10); border-radius: 22px; background: rgba(22,23,31,.78); box-shadow: 0 20px 60px rgba(0,0,0,.25); backdrop-filter: blur(16px); }
 .player-card { overflow: hidden; }
 .video-frame { position: relative; aspect-ratio: 16/9; background: #030306; }
 video { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -38,11 +38,35 @@ button, .shortcut-button { border: 0; border-radius: 12px; cursor: pointer; font
 button:disabled { cursor: not-allowed; opacity: .38; }
 .shortcut-button { display: block; margin-top: 12px; border: 1px solid #514361; color: #ddc7ff; background: #231c2d; }
 .hint { margin: 8px 2px 0; color: #858590; font-size: 11px; line-height: 1.6; }
+.history-section { margin-top: 16px; border-top: 1px solid #2e2f39; padding-top: 14px; }
+.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.section-heading h2 { margin: 0; color: #d7d5dd; font-size: 13px; }
+.section-heading .hint { margin-top: 4px; }
+.watch-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.compact-button { border: 1px solid #3c3d49; border-radius: 999px; background: #20212a; color: #c8c5ce; padding: 6px 9px; font-size: 10px; }
+.compact-button.active { border-color: #6b5186; background: #30233e; color: #e2cdff; }
+.room-history { display: grid; gap: 7px; margin-top: 12px; }
+.history-empty { margin: 4px 2px 0; color: #747580; font-size: 11px; }
+.room-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 42px; border: 1px solid #30313b; border-radius: 12px; background: #12131a; padding: 7px 8px 7px 10px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #555661; }
+.live-dot.live { background: #ff5c78; box-shadow: 0 0 0 4px rgba(255,92,120,.11); }
+.room-label { min-width: 0; }
+.room-name, .room-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-name { color: #e7e3eb; font-size: 12px; font-weight: 650; }
+.room-key { margin-top: 2px; color: #737480; font-size: 9px; }
+.room-open, .room-remove { border-radius: 8px; background: #292a35; color: #eeeaf4; padding: 7px 9px; font-size: 10px; }
+.room-open.live { background: #c8a2ff; color: #15101c; }
+.room-remove { background: transparent; color: #777884; padding-inline: 6px; }
 details { margin-top: 16px; border-top: 1px solid #2e2f39; padding-top: 14px; }
 summary { cursor: pointer; color: #aeadb6; font-size: 13px; }
 .details-body { display: grid; gap: 14px; padding-top: 16px; }
 .details-body .hint { margin-top: -8px; }
 .notice { margin: 0 0 14px; padding: 14px 16px; color: #eadcfb; font-size: 13px; line-height: 1.6; border-color: #634b77; }
+.install-guide { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 0 0 14px; padding: 14px 16px; border-color: #4f4662; }
+.install-guide[hidden] { display: none; }
+.install-guide strong { font-size: 13px; }
+.install-guide p { margin: 4px 0 0; color: #9996a2; font-size: 11px; line-height: 1.5; }
+.install-guide ol { grid-column: 1 / -1; margin: 2px 0 0; border-top: 1px solid #34313c; padding: 12px 0 0 22px; color: #c8c5ce; font-size: 12px; line-height: 1.9; }
 .status { min-height: 24px; margin: 14px 4px; color: #aaaab4; font-size: 12px; }
 .status.error { color: #ff9d9d; }
 footer { padding: 18px 4px 0; color: #666773; font-size: 10px; line-height: 1.7; }
@@ -52,4 +76,8 @@ footer { padding: 18px 4px 0; color: #666773; font-size: 10px; line-height: 1.7;
   .player-actions { grid-template-columns: 1fr; }
   .shell { padding-left: 12px; padding-right: 12px; }
   .control-card { padding: 15px; }
+  .section-heading { display: grid; }
+  .watch-actions { justify-content: flex-start; }
+  .install-guide { grid-template-columns: 1fr; }
+  .install-guide button { width: 100%; }
 }

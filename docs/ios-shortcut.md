@@ -24,10 +24,10 @@ https://YOUR_NAME.github.io/showroom-pip-pwa/
    `https://www.showroom-live.com/api/live/streaming_url?abr_available=1&room_id=`
 7. 「URL」→「URLの内容を取得」（GET）。
 8. 辞書の`streaming_url_list`を「各項目を繰り返す」。各項目の`type`が`hls_all`なら、その項目の`url`を変数`HLS`へ設定して繰り返しを停止。
-9. `HLS`へ「URLエンコード」を適用。
-10. 「テキスト」で次を作り、末尾へエンコード済みHLSを差し込む。
-    `https://YOUR_NAME.github.io/showroom-pip-pwa/#stream=`
-11. 「URLを開く」でそのテキストを開く。
+9. `HLS`とstatus辞書の`room_name`へ「URLエンコード」を適用。
+10. 「テキスト」で次を作る。`ROOM_KEY`、`ROOM_ID`、`ROOM_NAME`、`HLS`には、それぞれショートカット入力、`room_id`、エンコード済み`room_name`、エンコード済みHLSを差し込む。
+    `https://YOUR_NAME.github.io/showroom-pip-pwa/#v=1&status=ok&room=ROOM_KEY&room_id=ROOM_ID&room_name=ROOM_NAME&stream=HLS`
+11. 「URLを開く」でそのテキストを開く。PWAは`room_id`で履歴の重複を取り除く。
 
 Appleは「URLの内容を取得」でGET API requestを作る手順を[公式に案内](https://support.apple.com/en-ie/guide/shortcuts/apd58d46713f/ios)しています。初回実行時はSHOWROOMへのアクセス許可を求められる場合があります。
 

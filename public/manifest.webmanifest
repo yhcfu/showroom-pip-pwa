@@ -2,9 +2,13 @@
   "name": "SHOWROOM PiP",
   "short_name": "SR PiP",
   "description": "SHOWROOMの公開配信をPiP再生する個人用PWA",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "background_color": "#0a0b10",
   "theme_color": "#11131a",
   "icons": [
