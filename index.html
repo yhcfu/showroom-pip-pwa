@@ -2,110 +2,11 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#11131a" />
-    <meta name="description" content="SHOWROOMの公開HLSをPiP再生する個人用PWA" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="./icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="refresh" content="0; url=./app/" />
     <title>SHOWROOM PiP</title>
   </head>
   <body>
-    <main class="shell">
-      <header class="hero">
-        <p class="eyebrow">PERSONAL VIEWER / EXPERIMENTAL</p>
-        <h1>SHOWROOM <span>PiP</span></h1>
-        <p class="lead">公開中の配信を、小さなプレイヤーで見続けるための実験用PWAです。</p>
-      </header>
-
-      <section id="platform-note" class="notice" hidden></section>
-
-      <section id="install-guide" class="install-guide" hidden>
-        <div>
-          <strong id="install-title">ホーム画面に追加</strong>
-          <p id="install-summary">iPhoneで通知を受け取るための準備です。</p>
-        </div>
-        <button id="install-button" class="secondary" type="button">追加手順を見る</button>
-        <ol id="install-steps" hidden>
-          <li>Safari下部の共有ボタン（四角から上向き矢印）を押す</li>
-          <li>メニューを下へ送り、「ホーム画面に追加」を選ぶ</li>
-          <li>右上の「追加」を押す</li>
-          <li>ホーム画面にできたアイコンから起動する</li>
-        </ol>
-      </section>
-
-      <section class="player-card" aria-label="動画プレイヤー">
-        <div class="video-frame">
-          <video id="video" controls playsinline preload="metadata"></video>
-          <div id="empty-state" class="empty-state">
-            <span class="pulse"></span>
-            <p>配信URLを入力して開始</p>
-          </div>
-        </div>
-        <div class="player-actions">
-          <button id="pip-button" class="primary" type="button" disabled>ピクチャ・イン・ピクチャ</button>
-          <button id="copy-player-url" class="secondary" type="button" disabled>再生リンクをコピー</button>
-        </div>
-      </section>
-
-      <section class="control-card">
-        <form id="room-form">
-          <label for="room">SHOWROOMのルームURLまたは room_url_key</label>
-          <div class="field-row">
-            <input id="room" name="room" inputmode="url" autocomplete="url" placeholder="https://www.showroom-live.com/r/..." required />
-            <button class="primary" type="submit">配信を取得</button>
-          </div>
-        </form>
-
-        <section class="history-section" aria-labelledby="history-heading">
-          <div class="section-heading">
-            <div>
-              <h2 id="history-heading">最近開いたルーム</h2>
-              <p id="watch-capability" class="hint">履歴はこの端末内だけに保存されます。</p>
-            </div>
-            <div class="watch-actions">
-              <button id="watch-toggle" class="compact-button" type="button">配信検知 OFF</button>
-              <button id="notification-button" class="compact-button" type="button">通知を許可</button>
-            </div>
-          </div>
-          <div id="room-history" class="room-history">
-            <p class="history-empty">まだ履歴はありません。</p>
-          </div>
-        </section>
-
-        <a id="shortcut-button" class="shortcut-button" href="shortcuts://run-shortcut?name=SHOWROOM%20PiP&amp;input=text&amp;text=">
-          iPhoneショートカットで開く
-        </a>
-        <p class="hint">サーバー不要。先に付属ドキュメントどおり「SHOWROOM PiP」ショートカットを作成してください。</p>
-
-        <details>
-          <summary>設定 / HLS URLを直接指定</summary>
-          <div class="details-body">
-            <label for="resolver">Resolver URL</label>
-            <input id="resolver" inputmode="url" placeholder="https://showroom-pip-resolver.example.workers.dev" />
-            <p class="hint">GitHub PagesだけではSHOWROOM APIのCORS制限を越えられないため、通常取得時だけ使用します。</p>
-
-            <label for="watch-token">バックグラウンド通知Token（任意）</label>
-            <input id="watch-token" type="password" autocomplete="off" placeholder="Cloudflare Workerに設定したWATCH_TOKEN" />
-            <p class="hint">PWAを閉じた後も通知する場合だけ設定します。Tokenはこの端末内に保存され、Resolver以外へは送りません。</p>
-
-            <form id="hls-form">
-              <label for="hls-url">HLS master URL</label>
-              <div class="field-row">
-                <input id="hls-url" name="hls-url" inputmode="url" placeholder="https://.../playlist.m3u8" required />
-                <button class="secondary" type="submit">直接再生</button>
-              </div>
-            </form>
-          </div>
-        </details>
-      </section>
-
-      <p id="status" class="status" role="status" aria-live="polite">待機中</p>
-
-      <footer>
-        非公式・個人利用向け。SHOWROOMとの提携はありません。ログイン限定・有料配信には対応しません。
-      </footer>
-    </main>
-    <script type="module" src="/src/main.ts"></script>
+    <p><a href="./app/">SHOWROOM PiPを開く</a></p>
   </body>
 </html>

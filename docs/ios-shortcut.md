@@ -1,46 +1,52 @@
-# iPhoneショートカット（サーバー不要）
+# iPhoneショートカットの作り方
 
-この経路ではGitHub Pages以外のサーバーは不要です。PWAはApple公式の`shortcuts://run-shortcut` URL schemeで「SHOWROOM PiP」を起動します。URL schemeの仕様は[Apple公式ガイド](https://support.apple.com/en-au/guide/shortcuts/apd624386f42/ios)にあります。
+このショートカットは、PWAから受け取った`room_url_key`を使ってSHOWROOM APIへ端末から直接アクセスし、取得したHLS URLをSafariプレイヤーへ渡します。GitHub Pages以外のサーバーは使いません。
 
-## 前提
+## 事前準備
 
-GitHub Pagesの公開URLを決めてから作成します。以下では次を例にします。
+1. GitHub Pagesへデプロイする。
+2. 公開した`/app/`をSafariで開き、共有 →「ホーム画面に追加」を押す。
+3. iPhoneの「ショートカット」アプリで、新規ショートカットを作る。
+4. 名前を正確に`SHOWROOM PiP`とする。
 
-```text
-https://YOUR_NAME.github.io/showroom-pip-pwa/
-```
+## アクション
 
-## ショートカットを作る
+次の順でアクションを追加します。`ショートカットの入力`はPWAから渡されるroom keyです。
 
-ショートカット名は正確に`SHOWROOM PiP`とします。
+1. `URL`に次を設定する。
 
-1. 「ショートカットの入力」をテキストとして受け取る。PWAがルームURLを`room_url_key`へ変換して渡す。
-2. 「テキスト」で次を作る。末尾へショートカット入力を差し込む。
-   `https://www.showroom-live.com/api/room/status?room_url_key=`
-3. 「URL」→「URLの内容を取得」（GET）。
-4. 結果の辞書から`is_live`を取得し、falseなら「配信中ではありません」と通知して停止。
-5. 同じ辞書から`room_id`を取得。
-6. 「テキスト」で次を作り、末尾へroom_idを差し込む。
-   `https://www.showroom-live.com/api/live/streaming_url?abr_available=1&room_id=`
-7. 「URL」→「URLの内容を取得」（GET）。
-8. 辞書の`streaming_url_list`を「各項目を繰り返す」。各項目の`type`が`hls_all`なら、その項目の`url`を変数`HLS`へ設定して繰り返しを停止。
-9. `HLS`とstatus辞書の`room_name`へ「URLエンコード」を適用。
-10. 「テキスト」で次を作る。`ROOM_KEY`、`ROOM_ID`、`ROOM_NAME`、`HLS`には、それぞれショートカット入力、`room_id`、エンコード済み`room_name`、エンコード済みHLSを差し込む。
-    `https://YOUR_NAME.github.io/showroom-pip-pwa/#v=1&status=ok&room=ROOM_KEY&room_id=ROOM_ID&room_name=ROOM_NAME&stream=HLS`
-11. 「URLを開く」でそのテキストを開く。PWAは`room_id`で履歴の重複を取り除く。
+   ```text
+   https://www.showroom-live.com/api/room/status?room_url_key=[ショートカットの入力]
+   ```
 
-Appleは「URLの内容を取得」でGET API requestを作る手順を[公式に案内](https://support.apple.com/en-ie/guide/shortcuts/apd58d46713f/ios)しています。初回実行時はSHOWROOMへのアクセス許可を求められる場合があります。
+2. `URLの内容を取得`を追加し、方法を`GET`にする。
+3. 取得した辞書から`is_live`を取り出し、falseなら「現在は配信中ではありません」と通知して停止する。
+4. 同じ辞書から`room_id`と`room_name`を取り出す。
+5. `URL`に次を設定する。
 
-通常の「URLを開く」でPWA側へ戻ってしまう端末では、手順10の先頭を`x-safari-https://YOUR_NAME.github.io/...`に変える手があります。これはSafariを明示的に開く未文書化schemeで、[海外フォーラムのiOS 17〜26での報告](https://stackoverflow.com/questions/60267796/ios-pwa-how-to-open-external-link-on-mobile-default-safarinot-in-app-browser/79794792)に基づく最終手段です。Appleの公式仕様ではなく、将来動かなくなる可能性があります。
+   ```text
+   https://www.showroom-live.com/api/live/streaming_url?abr_available=1&room_id=[room_id]
+   ```
+
+6. `URLの内容を取得`を追加し、方法を`GET`にする。
+7. `streaming_url_list`を繰り返し、`type`が`hls_all`の項目を選ぶ。なければ`hls`を選ぶ。
+8. 選んだ項目の`url`を取り出す。
+9. 次のURLを組み立てる。角括弧部分はそれぞれURLエンコードして差し込む。
+
+   ```text
+   https://yhcfu.github.io/showroom-pip-pwa/player/#v=1&status=ok&room=[room_url_key]&room_id=[room_id]&room_name=[room_name]&stream=[HLS URL]
+   ```
+
+10. `URLを開く`で上のURLを開く。
+
+forkしてrepository名を変えた場合は、手順9のURLも実際のPlayer URLへ置き換えてください。
 
 ## 使い方
 
-1. ホーム画面からPWAを起動。
-2. ルームURLまたは`room_url_key`を入力。
-3. 「iPhoneショートカットで開く」をタップ。
-4. ショートカットが通常Safariで静的プレイヤーを開く。
-5. 再生開始後、動画コントロールまたはページのPiPボタンを押す。
+ホーム画面のPWAでルームを入力し、「このルームを開く」を押します。ショートカットがAPIを取得し、`/app/`のscope外にある`/player/`をSafariで開きます。動画を再生してからPiPボタンを押してください。
 
-## なぜSafariへ戻すのか
+ホーム画面Web AppとSafariはstorageが分かれるため、Safari側で取得したroomIdとroom名はPWA履歴へ戻りません。PWAにはショートカットを起動する前に保存したroom keyが残り、同じkeyの履歴だけが重複排除されます。
 
-iOS/iPadOSでは、ホーム画面からstandalone表示したWeb AppのPiPが失敗する[WebKit Bug 303885](https://bugs.webkit.org/show_bug.cgi?id=303885)が2026-08-25時点でも未解決です。HLS、MP4、MSE、WASMの違いではなく表示コンテキスト側の問題なので、通常Safariへ開く必要があります。
+iOSのバージョンによってscope外URLの開き方が変わる可能性があります。Playerがstandalone画面へ戻ってPiPできない場合は、SafariのアドレスバーへPlayer URLを貼り付けて開くのがフォールバックです。
+
+参考: [WebKit bug 303885](https://bugs.webkit.org/show_bug.cgi?id=303885)

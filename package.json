@@ -8,23 +8,17 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:resolver": "wrangler dev --config worker/wrangler.jsonc",
-    "build": "tsc --noEmit && tsc -p worker/tsconfig.json && vite build",
+    "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "check": "npm run test && npm run build",
-    "vapid:generate": "node scripts/generate-vapid.mjs",
-    "deploy:resolver": "wrangler deploy --config worker/wrangler.jsonc"
+    "check": "npm run test && npm run build"
   },
   "dependencies": {
-    "@mmmike/web-push": "^1.3.0",
     "hls.js": "^1.6.13"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260825.1",
     "@types/node": "^22.19.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.3",
-    "vitest": "^3.2.4",
-    "wrangler": "^4.125.0"
+    "vitest": "^3.2.4"
   }
 }

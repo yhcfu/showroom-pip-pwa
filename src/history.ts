@@ -3,8 +3,6 @@ export type RoomHistoryEntry = {
   roomId?: number;
   roomName?: string;
   lastOpenedAt: number;
-  lastCheckedAt?: number;
-  isLive?: boolean;
 };
 
 const MAX_HISTORY_SIZE = 20;
@@ -29,24 +27,6 @@ export function upsertRoomHistory(
     .slice(0, maxSize);
 }
 
-export function mergeRoomStatus(
-  entries: RoomHistoryEntry[],
-  status: Pick<RoomHistoryEntry, "roomKey" | "roomId" | "roomName" | "lastCheckedAt" | "isLive">,
-): RoomHistoryEntry[] {
-  const existing = entries.find((entry) => sameRoom(entry, {
-    ...status,
-    lastOpenedAt: 0,
-  }));
-
-  if (!existing) return entries;
-
-  return upsertRoomHistory(entries, {
-    ...existing,
-    ...status,
-    lastOpenedAt: existing.lastOpenedAt,
-  });
-}
-
 export function parseRoomHistory(value: string | null): RoomHistoryEntry[] {
   if (!value) return [];
   try {
@@ -59,10 +39,14 @@ export function parseRoomHistory(value: string | null): RoomHistoryEntry[] {
         return typeof candidate.roomKey === "string" &&
           typeof candidate.lastOpenedAt === "number" &&
           (candidate.roomId === undefined || typeof candidate.roomId === "number") &&
-          (candidate.roomName === undefined || typeof candidate.roomName === "string") &&
-          (candidate.lastCheckedAt === undefined || typeof candidate.lastCheckedAt === "number") &&
-          (candidate.isLive === undefined || typeof candidate.isLive === "boolean");
+          (candidate.roomName === undefined || typeof candidate.roomName === "string");
       })
+      .map((entry) => ({
+        roomKey: entry.roomKey,
+        roomId: entry.roomId,
+        roomName: entry.roomName,
+        lastOpenedAt: entry.lastOpenedAt,
+      }))
       .reduce<RoomHistoryEntry[]>((result, entry) => upsertRoomHistory(result, entry), []);
   } catch {
     return [];

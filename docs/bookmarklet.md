@@ -1,24 +1,28 @@
-# ブックマークレット（サーバー不要）
+# Android・PCのブックマークレット
 
-SHOWROOMのルームページ自身でJavaScriptを実行すれば、APIと同一originになるためCORSに遮られません。その場でHLS URLを取得し、GitHub Pagesのプレイヤーを別タブで開けます。
+AndroidとPCでは、SHOWROOMのルームページと同じoriginでJavaScriptを実行します。これにより、外部PWAからはCORSで読めないAPIを、SHOWROOMページ自身から取得できます。
 
-## 作成
+## 初回だけ行うこと
 
-Safari/Chromeで任意ページをブックマークし、URL欄を次のコードへ置き換えます。`PLAYER_BASE`だけ自分のPages URLへ変更してください。
+1. 公開したPWAの「ブックマークレットをコピー」を押す。
+2. ブラウザで任意のページをブックマークする。
+3. 作ったブックマークを編集し、URL欄をコピーした`javascript:...`へ置き換える。
+4. 名前を`SHOWROOM PiP`など、検索しやすいものにする。
 
-```javascript
-javascript:(async()=>{const PLAYER_BASE='https://YOUR_NAME.github.io/showroom-pip-pwa/';const m=location.pathname.match(/^\/r\/([A-Za-z0-9_-]+)/);if(!m){alert('SHOWROOMの /r/<room_url_key> ページで実行してください');return}const tab=open('about:blank','_blank');try{const s=await fetch('/api/room/status?room_url_key='+encodeURIComponent(m[1])).then(r=>r.json());if(!s.is_live)throw new Error('配信中ではありません');const j=await fetch('/api/live/streaming_url?abr_available=1&room_id='+s.room_id).then(r=>r.json());const h=j.streaming_url_list.find(x=>x.type==='hls_all')||j.streaming_url_list.find(x=>x.type==='hls');if(!h)throw new Error('HLSがありません');tab.location=PLAYER_BASE+'#'+new URLSearchParams({stream:h.url})}catch(e){tab.close();alert(e.message)}})()
-```
+Chrome for Androidでは、ブックマーク一覧から押す代わりに、SHOWROOMのルームページを表示した状態でアドレスバーへブックマーク名を入力し、候補を選びます。
 
 ## 使い方
 
-1. 通常のSafari/Chromeで`https://www.showroom-live.com/r/<room_url_key>`を開く。
-2. 作成したブックマークレットを実行。
-3. 開いたPagesプレイヤーで再生し、PiPを開始。
+1. PWAへルームURLを入力するか、履歴の「SHOWROOM」を押す。
+2. 開いた`https://www.showroom-live.com/r/...`でブックマークレットを実行する。
+3. 配信中なら、別タブのPlayerへ移動する。
+4. 動画を再生してPiPボタンを押す。
+
+ブックマークレットはroom key、roomId、room名もPlayerへ渡します。PlayerとPWAは同じGitHub Pages originなので、次にPWAを開いたとき履歴がroomIdで重複排除されます。
 
 ## 制約
 
-- ブラウザがブックマークレット実行を許す必要があります。iOS Safariではブックマーク編集が必要です。
-- SHOWROOMのContent Security PolicyやAPI/URL変更で動かなくなる可能性があります。
-- SHOWROOMページをiframe化する方法ではありません。
-- PWAから別originのSHOWROOMページへコードを注入することはできません。
+- ブックマーク同期サービスへコードが保存される場合があります。コードに秘密情報は含みません。
+- SHOWROOM側のContent Security PolicyやAPI仕様が変わると動かなくなる可能性があります。
+- 配信していないルームではPlayerを開きません。
+- 限定・有料配信やログインCookieの転送には対応しません。

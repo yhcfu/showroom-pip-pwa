@@ -15,12 +15,13 @@ describe("handoff URLs", () => {
   const stream = "https://cdn.example.test/live/master.m3u8?token=a&b=2";
 
   it("keeps the HLS URL in the fragment", () => {
-    const result = buildPlayerUrl(stream, "https://user.github.io/showroom-pip/?old=1", {
+    const result = buildPlayerUrl(stream, "https://user.github.io/showroom-pip/player/?old=1", {
       roomKey: "room-a",
       roomId: 42,
       roomName: "Room A",
     });
     expect(result).not.toContain("?old=1");
+    expect(new URL(result).pathname).toBe("/showroom-pip/player/");
     expect(readStreamFromHash(new URL(result).hash)).toBe(stream);
     expect(readPlayerHandoff(new URL(result).hash)).toEqual({
       streamUrl: stream,

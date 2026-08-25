@@ -1,52 +1,37 @@
 # 構成
 
-## 推奨構成
+## 現在の構成
 
 ```text
-GitHub Pages PWA
-  ├─ iPhone: shortcuts:// → Appleショートカット → SHOWROOM JSON API
-  │                                             └→ Safari player#stream=...
-  └─ Android/Desktop: Cloudflare Worker /resolve → SHOWROOM JSON API
-                                                └→ player#stream=...
+GitHub Pages
+├─ /app/       インストール対象PWA、入力、端末内履歴
+└─ /player/    PWA scope外の動画プレイヤー
 
-player <video> ─────────────────────────────────→ SHOWROOM HLS CDN
+iPhone PWA ── shortcuts:// ── Appleショートカット
+                                  ├─ SHOWROOM JSON API
+                                  └─ /player/#stream=... ── Safari PiP
 
-Cloudflare Cron → Worker /status → D1の直前状態と比較
-                                  └→ OFF→LIVEだけWeb Push → iPhone / Android
+Android PWA ── SHOWROOMルームページ ── bookmarklet
+                                          ├─ SHOWROOM JSON API
+                                          └─ /player/#stream=... ── Chrome PiP
+
+/player/ <video> ── SHOWROOM HLS CDN
 ```
 
-履歴はPWAの`localStorage`だけに保存します。`room_id`を取得できた時点で同じルームを統合します。配信検知はPWAからResolverの`/status`へ最大20件をまとめて渡し、画面表示中は60秒ごとに状態変化を確認します。
+PWAとplayerは同じGitHub Pages deploymentにあります。ただしWeb App ManifestとService Workerのscopeは`/app/`だけです。`/player/`を外へ置くことで、iOSのショートカットが開いた動画URLをstandalone PWAへ戻しません。
 
-映像はSHOWROOM側CDNから端末へ直接取得します。ここはWorkerを通りません。
+## データの扱い
 
-Workerは`room_url_key`から公開HLS master URLを解決します。Web Pushを有効にした場合だけ、Push購読情報・監視対象・直前のLIVE状態をD1へ保存します。
+履歴は`localStorage`だけに保存します。Androidや通常ブラウザでは`/app/`と`/player/`が同じstorageを使うため、Playerが受け取った`room_id`、`room_url_key`、`room_name`をPWAの履歴へ反映できます。
 
-## URL fragmentを使う理由
+iPhoneのホーム画面Web AppはSafariとstorageが分離されます。iOS経路ではPWAへ入力した`room_url_key`だけがPWA側に残り、Safari Player側のroomIdとroom名はPWAへ同期されません。サーバーなしの静的版ではこの境界を受け入れ、iOS履歴はroom keyで重複を除きます。
 
-プレイヤーへの引き渡しは`#stream=<percent-encoded HLS URL>`です。fragmentはHTTPリクエストでGitHub Pagesへ送信されません。そのため、CDN URLがPagesのアクセスログへ入るのを避けられます。
-
-ただし、ブラウザ履歴やクリップボードには残り得ます。再生リンクは共有しないでください。
-
-## Resolverの境界
-
-付属Workerは以下に限定しています。
-
-- 入力はSHOWROOMの`/r/<key>` URLまたは厳格な`room_url_key`だけ
-- 接続先はコード内で固定した`https://www.showroom-live.com`だけ
-- タイムアウトは5秒
-- Cookie・認証情報を受け取らない、転送しない
-- `hls_all`、なければ公開`hls`だけを返す
-- `/status`は最大20件の固定形式room keyだけを受け付ける
-- `/push/subscription`は共有の`WATCH_TOKEN`が一致するときだけ更新できる
-- HLS URLをキャッシュ・保存しない
-- CORSは`ALLOWED_ORIGINS`に列挙した自分のPages originだけ
-
-一般URLを受け取るCORS proxyにはしていません。
+HLS URLはURL fragmentの`#stream=...`で渡します。fragmentはGitHub PagesへのHTTP requestに含まれません。ただしブラウザ履歴やクリップボードには残るため、再生リンクは共有しないでください。
 
 ## PiP経路
 
-- Chrome/Edge等: 標準`HTMLVideoElement.requestPictureInPicture()`
-- Safari: native HLSを`<video playsinline controls>`へ設定し、標準APIまたはWebKit presentation modeを試す
-- iOS standalone PWA: 現在のWebKit既知問題を避け、ショートカットから通常Safariへ開く
+- Safari: native HLSを`<video playsinline controls>`へ設定し、標準PiP APIまたはWebKit presentation modeを使う。
+- Chrome/Edge: HLS.jsでmaster playlistを読み、標準`requestPictureInPicture()`を使う。
+- iOS standalone PWA: 動画を読み込まず、scope外のSafari playerへ渡す。
 
-HLS.jsはnative HLSのないブラウザでのみ使用します。
+映像はSHOWROOMのCDNから端末へ直接流れます。GitHub Pagesは映像を中継しません。
