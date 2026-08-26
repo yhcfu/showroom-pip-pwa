@@ -6,13 +6,14 @@ const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
 const player = readFileSync(new URL("./player.ts", import.meta.url), "utf8");
 
 describe("player tools", () => {
-  it("provides compact share, balance, screenshot, live, PiP, and fullscreen controls", () => {
+  it("provides compact share, balance, screenshot, PiP, and fullscreen controls", () => {
     expect(html).toContain('id="share-button"');
     expect(html).toContain('id="balance-button"');
     expect(html).toContain('id="balance-panel"');
     expect(html).toContain('id="screenshot-button"');
-    expect(html).toContain('id="live-button"');
+    expect(html).not.toContain('id="live-button"');
     expect(html).toContain('aria-keyshortcuts="S"');
+    expect(html).not.toContain('class="tool-shortcut"');
     expect(html).toContain('id="pip-button"');
     expect(html).toContain('id="fullscreen-button"');
     expect(html).toContain('class="player-tool icon-tool"');
@@ -20,9 +21,9 @@ describe("player tools", () => {
     expect(html).toContain('class="tool-icon success-icon"');
     expect(html).toContain('class="tool-label">L/R</span>');
     expect(html).toContain('id="screenshot-label" class="tool-label">撮影</span>');
-    expect(html).toContain('class="tool-label">ライブ</span>');
     expect(html).toContain('id="pip-label" class="tool-label">PiP</span>');
     expect(html).toContain('id="fullscreen-label" class="tool-label">全画面</span>');
+    expect(html.indexOf('id="screenshot-button"')).toBeLessThan(html.indexOf('id="share-button"'));
   });
 
   it("keeps icon actions named while hiding their labels on compact touch layouts", () => {
@@ -32,11 +33,12 @@ describe("player tools", () => {
     expect(html).toContain('aria-label="ピクチャーインピクチャー"');
     expect(html).toContain('aria-label="全画面"');
     expect(css).toContain(".player-tool[hidden] { display: none; }");
-    expect(css).toContain(".icon-tool .tool-label, .icon-tool .tool-shortcut { display: none; }");
+    expect(css).toContain(".icon-tool .tool-label { display: none; }");
   });
 
   it("reflects capture, PiP, and fullscreen state in the compact controls", () => {
     expect(player).toContain('screenshotButton.classList.add("is-success")');
+    expect(player).not.toContain('screenshotLabel.textContent');
     expect(player).toContain('video.addEventListener("enterpictureinpicture"');
     expect(player).toContain('setFullscreenState(document.fullscreenElement !== null)');
     expect(css).toContain('.player-tool[aria-pressed="true"]');
@@ -45,7 +47,12 @@ describe("player tools", () => {
   it("uses the rewind-preserving live HLS configuration", () => {
     expect(player).toContain("createPersistentFragmentLoader");
     expect(player).toContain("startPosition: restored.startPosition");
-    expect(player).toContain('liveButton.addEventListener("click"');
+    expect(player).toContain('video.addEventListener("ended", () => {');
+    expect(player).toContain("if (replaying) void startLivePlayback()");
+    expect(player).not.toContain("liveButton");
+    expect(player).not.toContain("video.currentTime >= video.duration");
+    expect(player).toContain("lockHighestQuality(instance, Hls)");
+    expect(player).toContain("instance.currentLevel = level");
   });
 
   it("reveals desktop tools from activity and hides them independently of hover", () => {

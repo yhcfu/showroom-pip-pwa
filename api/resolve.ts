@@ -11,7 +11,14 @@ type StatusPayload = {
 };
 
 type StreamingPayload = {
-  streaming_url_list?: Array<{ type?: string; url?: string }>;
+  streaming_url_list?: Array<StreamingUrl>;
+};
+
+type StreamingUrl = {
+  type?: string;
+  url?: string;
+  label?: string;
+  quality?: number;
 };
 
 export type ResolvedShowroomRoom = {
@@ -43,6 +50,19 @@ async function readJson<T>(url: URL, fetcher: Fetcher, signal: AbortSignal): Pro
   return response.json() as Promise<T>;
 }
 
+export function selectHighestQualityHls(streams: StreamingUrl[]): StreamingUrl | undefined {
+  const fixedHls = streams.filter((stream) => stream.type === "hls" && typeof stream.url === "string");
+  if (fixedHls.length > 0) {
+    return fixedHls.reduce((best, stream) => {
+      const original = stream.label?.toLowerCase().includes("original") ? 1 : 0;
+      const bestOriginal = best.label?.toLowerCase().includes("original") ? 1 : 0;
+      if (original !== bestOriginal) return original > bestOriginal ? stream : best;
+      return (stream.quality ?? 0) > (best.quality ?? 0) ? stream : best;
+    });
+  }
+  return streams.find((stream) => stream.type === "hls_all" && typeof stream.url === "string");
+}
+
 export async function resolveShowroomRoom(
   input: string,
   fetcher: Fetcher = fetch,
@@ -65,8 +85,7 @@ export async function resolveShowroomRoom(
   streamUrl.searchParams.set("abr_available", "1");
   streamUrl.searchParams.set("room_id", String(status.room_id));
   const streams = await readJson<StreamingPayload>(streamUrl, fetcher, signal);
-  const selected = streams.streaming_url_list?.find((item) => item.type === "hls_all")
-    ?? streams.streaming_url_list?.find((item) => item.type === "hls");
+  const selected = selectHighestQualityHls(streams.streaming_url_list ?? []);
 
   if (typeof selected?.url !== "string") {
     throw new ResolverError("公開HLSが見つかりませんでした。", 502, "stream_not_found");

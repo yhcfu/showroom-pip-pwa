@@ -9,7 +9,7 @@ import {
   shouldOfferAudioBalance,
 } from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
-import { LIVE_HLS_CONFIG } from "./live-playback";
+import { highestQualityLevel, LIVE_HLS_CONFIG } from "./live-playback";
 import {
   buildBufferSessionKey,
   createPersistentFragmentLoader,
@@ -43,8 +43,6 @@ const balancePanel = document.querySelector<HTMLElement>("#balance-panel")!;
 const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
 const balanceValue = document.querySelector<HTMLOutputElement>("#balance-value")!;
 const screenshotButton = document.querySelector<HTMLButtonElement>("#screenshot-button")!;
-const screenshotLabel = document.querySelector<HTMLElement>("#screenshot-label")!;
-const liveButton = document.querySelector<HTMLButtonElement>("#live-button")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
 const pipLabel = document.querySelector<HTMLElement>("#pip-label")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
@@ -175,13 +173,11 @@ function showScreenshotSuccess(copied: boolean) {
   screenshotButton.classList.add("is-success");
   screenshotButton.setAttribute("aria-label", message);
   screenshotButton.title = message;
-  screenshotLabel.textContent = "保存済み";
   window.clearTimeout(screenshotStatusTimer);
   screenshotStatusTimer = window.setTimeout(() => {
     screenshotButton.classList.remove("is-success");
     screenshotButton.setAttribute("aria-label", "スクリーンショットを保存・コピー");
     screenshotButton.title = "スクリーンショットを保存・コピー (S)";
-    screenshotLabel.textContent = "撮影";
     if (status.textContent === message) setStatus("");
   }, 1200);
 }
@@ -335,9 +331,6 @@ video.addEventListener("canplay", () => {
 });
 video.addEventListener("timeupdate", () => {
   writeResumeMarker();
-  if (replaying && Number.isFinite(video.duration) && video.duration > 0 && video.currentTime >= video.duration - 0.75) {
-    void startLivePlayback();
-  }
 });
 video.addEventListener("ended", () => {
   if (replaying) void startLivePlayback();
@@ -383,13 +376,24 @@ async function playCurrentMedia() {
   }
 }
 
+function lockHighestQuality(instance: import("hls.js").default, Hls: typeof import("hls.js").default) {
+  const selectHighest = () => {
+    const level = highestQualityLevel(instance.levels);
+    if (level < 0) return;
+    instance.autoLevelCapping = level;
+    if (instance.currentLevel !== level && instance.loadLevel !== level) instance.currentLevel = level;
+    else instance.loadLevel = level;
+  };
+  instance.on(Hls.Events.MANIFEST_PARSED, selectHighest);
+  instance.on(Hls.Events.LEVELS_UPDATED, selectHighest);
+}
+
 async function startLivePlayback() {
   if (!bufferStore || !currentHandoff || switchingToLive) return;
   switchingToLive = true;
   writeResumeMarker(true);
   replaying = false;
   replayPlan = null;
-  liveButton.hidden = true;
   currentLiveFragment = null;
   releaseReplayManifest();
   hls?.destroy();
@@ -400,6 +404,7 @@ async function startLivePlayback() {
     const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
     const instance = new Hls({ ...LIVE_HLS_CONFIG, fLoader: FragmentLoader });
     hls = instance;
+    lockHighestQuality(instance, Hls);
     instance.on(Hls.Events.FRAG_CHANGED, (_event, data) => {
       currentLiveFragment = data.frag;
       writeResumeMarker();
@@ -433,7 +438,6 @@ async function startPersistentPlayback(handoff: PlayerHandoff, Hls: typeof impor
 
   replaying = true;
   replayPlan = restored;
-  liveButton.hidden = false;
   setStatus("前回位置から再開しています");
   replayManifestUrl = URL.createObjectURL(new Blob([restored.playlist], { type: "application/vnd.apple.mpegurl" }));
   const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
@@ -444,6 +448,7 @@ async function startPersistentPlayback(handoff: PlayerHandoff, Hls: typeof impor
     lowLatencyMode: false,
   });
   hls = instance;
+  lockHighestQuality(instance, Hls);
   instance.on(Hls.Events.ERROR, (_event, data) => {
     if (data.fatal && replaying) void startLivePlayback();
   });
@@ -461,7 +466,6 @@ async function loadStream(handoff: PlayerHandoff) {
   bufferSessionKey = null;
   replaying = false;
   replayPlan = null;
-  liveButton.hidden = true;
   emptyState.hidden = true;
   pipButton.disabled = true;
   screenshotButton.disabled = true;
@@ -494,10 +498,6 @@ async function loadStream(handoff: PlayerHandoff) {
   history.replaceState(null, "", buildPlayerUrl(handoff.streamUrl, location.href, handoff));
   if (!hls) await playCurrentMedia();
 }
-
-liveButton.addEventListener("click", () => {
-  void startLivePlayback();
-});
 
 shareButton.addEventListener("click", async () => {
   if (!shareUrl) return;

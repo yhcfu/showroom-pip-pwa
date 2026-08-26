@@ -20,6 +20,16 @@
         </a>
         <p id="status" class="player-status" role="status" aria-live="polite">リンクを確認中…</p>
         <div class="player-tools">
+          <button id="screenshot-button" class="player-tool icon-tool" type="button" aria-label="スクリーンショットを保存・コピー" aria-keyshortcuts="S" title="スクリーンショットを保存・コピー (S)" disabled>
+            <svg class="tool-icon default-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 7h4l1.5-2h5L16 7h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path>
+              <circle cx="12" cy="13" r="3.5"></circle>
+            </svg>
+            <svg class="tool-icon success-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="m5 12 4 4L19 6"></path>
+            </svg>
+            <span id="screenshot-label" class="tool-label">撮影</span>
+          </button>
           <button id="share-button" class="player-tool icon-tool" type="button" aria-label="共有URLをコピー" title="共有URLをコピー" hidden>
             <svg class="tool-icon default-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="8" y="8" width="11" height="11" rx="2"></rect>
@@ -37,24 +47,6 @@
               <circle cx="12" cy="15" r="2"></circle>
             </svg>
             <span class="tool-label">L/R</span>
-          </button>
-          <button id="screenshot-button" class="player-tool icon-tool" type="button" aria-label="スクリーンショットを保存・コピー" aria-keyshortcuts="S" title="スクリーンショットを保存・コピー (S)" disabled>
-            <svg class="tool-icon default-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 7h4l1.5-2h5L16 7h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path>
-              <circle cx="12" cy="13" r="3.5"></circle>
-            </svg>
-            <svg class="tool-icon success-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="m5 12 4 4L19 6"></path>
-            </svg>
-            <span id="screenshot-label" class="tool-label">撮影</span>
-            <kbd class="tool-shortcut" aria-hidden="true">S</kbd>
-          </button>
-          <button id="live-button" class="player-tool icon-tool" type="button" aria-label="ライブへ戻る" title="ライブへ戻る" hidden>
-            <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"></path>
-            </svg>
-            <span class="tool-label">ライブ</span>
           </button>
           <button id="pip-button" class="player-tool icon-tool" type="button" aria-label="ピクチャーインピクチャー" title="ピクチャーインピクチャー" aria-pressed="false" disabled>
             <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

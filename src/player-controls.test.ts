@@ -12,7 +12,7 @@ const passivePlayback = {
 
 describe("player controls visibility", () => {
   it("hides desktop controls after a short period of passive playback", () => {
-    expect(PLAYER_CONTROLS_IDLE_MS).toBe(2000);
+    expect(PLAYER_CONTROLS_IDLE_MS).toBe(900);
     expect(shouldKeepPlayerControlsVisible(passivePlayback)).toBe(false);
   });
 

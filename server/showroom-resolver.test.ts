@@ -1,24 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveShowroomRoom } from "../api/resolve";
+import { resolveShowroomRoom, selectHighestQualityHls } from "../api/resolve";
 
 describe("resolveShowroomRoom", () => {
-  it("resolves the preferred adaptive HLS stream", async () => {
+  it("resolves the original-quality fixed HLS stream", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(Response.json({ is_live: true, room_id: 42, room_name: "Room A" }))
       .mockResolvedValueOnce(Response.json({ streaming_url_list: [
-        { type: "hls", url: "https://cdn.example.test/live/fallback.m3u8" },
-        { type: "hls_all", url: "https://cdn.example.test/live/master.m3u8?token=short-lived" },
+        { type: "hls_all", label: "Automatic", quality: 0, url: "https://cdn.example.test/live/master.m3u8" },
+        { type: "hls", label: "low quality", quality: 100, url: "https://cdn.example.test/live/low.m3u8" },
+        { type: "hls", label: "original quality", quality: 1000, url: "https://cdn.example.test/live/original.m3u8" },
       ] }));
 
     await expect(resolveShowroomRoom("room-a", fetcher)).resolves.toEqual({
       roomKey: "room-a",
       roomId: 42,
       roomName: "Room A",
-      streamUrl: "https://cdn.example.test/live/master.m3u8?token=short-lived",
+      streamUrl: "https://cdn.example.test/live/original.m3u8",
     });
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(String(fetcher.mock.calls[0][0])).toContain("room/status?room_url_key=room-a");
     expect(String(fetcher.mock.calls[1][0])).toContain("streaming_url?abr_available=1&room_id=42");
+  });
+
+  it("falls back to automatic HLS when no fixed rendition is available", () => {
+    expect(selectHighestQualityHls([
+      { type: "hls_all", label: "Automatic", url: "https://cdn.example.test/live/master.m3u8" },
+    ])?.url).toBe("https://cdn.example.test/live/master.m3u8");
   });
 
   it("stops before requesting a stream when the room is offline", async () => {

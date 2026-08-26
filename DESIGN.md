@@ -3,7 +3,7 @@
 ## Source of truth
 
 - Status: Active
-- Last refreshed: 2026-08-26
+- Last refreshed: 2026-08-27
 - Primary product surfaces: `/app/` launcher and history, `/player/` video-only player
 - Evidence reviewed: `README.md`, `app/index.html`, `player/index.html`, `src/main.ts`, `src/player.ts`, `src/style.css`, platform setup documents
 
@@ -48,14 +48,14 @@
 - Typography: system sans-serif, compact controls, one small product title, no marketing copy
 - Spacing/layout rhythm: 8px base rhythm; one compact surface; dividers instead of nested cards
 - Shape/radius/elevation: 12–18px radii; minimal shadow; no glass panels for ordinary sections
-- Motion: a small loading pulse; on fine-pointer devices, hide the player overlay after 2 seconds without input while playback continues, then reveal it immediately on pointer or keyboard activity; honor reduced-motion preferences
+- Motion: a small loading pulse; on fine-pointer devices, hide the player overlay after 0.9 seconds without input while playback continues, then reveal it immediately on pointer or keyboard activity; honor reduced-motion preferences
 - Imagery/iconography: player actions use familiar inline SVG icons with accessible names; desktop pairs icons with short labels, while compact touch layouts show icons only; no illustrative assets or icon-library dependency
 
 ## Components
 
 - Existing components to reuse: room form, history rows, collapsed settings, player controls
-- New/changed components: pinned history action, clean share-URL action, conditional L/R balance panel, screenshot action, full-viewport video stage, cached-resume state with a compact `ライブへ戻る` action
-- Variants and states: playback stays identical across devices; installation guidance differs by install capability; Web Audio balance is a PC-only enhancement; copy and capture acknowledge success in place, while PiP, fullscreen, and the open L/R panel expose a restrained active state
+- New/changed components: pinned history action, clean share-URL action, conditional L/R balance panel, screenshot action, full-viewport video stage, and a button-free cached-resume handoff
+- Variants and states: playback stays identical across devices; installation guidance differs by install capability; Web Audio balance is a PC-only enhancement; copy and capture acknowledge success without changing control width, while PiP, fullscreen, and the open L/R panel expose a restrained active state
 - Token/component ownership: `src/style.css` owns the small local visual system
 
 ## Accessibility
@@ -75,8 +75,8 @@
 ## Interaction states
 
 - Loading: Player reports HLS loading and keeps PiP disabled until metadata exists
-- Playback: desktop controls stay visible while paused, buffering, keyboard-focused, or showing the L/R panel; during uninterrupted playback they fade after 2 seconds of inactivity and return on pointer or keyboard input; a mouse click must not pin them onscreen
-- Cached resume: restore a contiguous cached run at the last saved segment and offset; automatically reconnect to live at its end, with an always-available `ライブへ戻る` escape hatch
+- Playback: desktop controls stay visible while paused, buffering, keyboard-focused, or showing the L/R panel; during uninterrupted playback they fade after 0.9 seconds of inactivity and return on pointer or keyboard input; a mouse click must not pin them onscreen
+- Cached resume: restore a contiguous cached run at the last saved segment and offset; let the native timeline handle rewind and chase playback; never jump forward merely because playback is near the end; join the current live stream automatically only after the saved timeline actually ends
 - Empty: history says that no rooms have been opened
 - Error: invalid room, clipboard failure, and HLS failure appear in the live status
 - Success: successful playback removes the loading status; copy success is reflected briefly in the control itself; frame capture reports a short save confirmation
@@ -94,7 +94,7 @@
 - Framework/styling system: Vite, TypeScript, plain HTML/CSS
 - Design-token constraints: extend current local colors and radii; do not add a component library
 - Performance constraints: no new runtime dependency; media never passes through the resolver; segment payloads live separately from metadata so pruning does not load the full cache; create the Web Audio graph only after an explicit L/R interaction
-- Compatibility constraints: the PWA stays on GitHub Pages; every HTML surface declares `noindex`; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope; fine-pointer Chrome/Edge and Android use HLS.js/MSE with a device-local persistent buffer; mobile Safari stays on native HLS without persistent resume or L/R; frame capture requires CORS-clean video; custom and native media controls must use separate boxes on coarse-pointer devices
+- Compatibility constraints: the PWA stays on GitHub Pages; every HTML surface declares `noindex`; one Vercel Function resolves live metadata and prefers SHOWROOM's fixed original-quality HLS for every platform; `/player/` remains outside the installed `/app/` scope; fine-pointer Chrome/Edge and Android use HLS.js/MSE with a device-local persistent buffer and highest-level lock for master-playlist fallbacks; mobile Safari stays on native HLS without persistent resume or L/R; frame capture requires CORS-clean video; custom and native media controls must use separate boxes on coarse-pointer devices
 - Test/screenshot expectations: unit-test history normalization, balance value handling, resolver validation, shared Player routing, persistent-buffer retention/selection/playlist generation, and overlay visibility rules; verify full-viewport desktop and mobile layouts, cached resume and live handoff, idle hiding and input-driven reveal, plus the public Pages build
 
 ## Open questions

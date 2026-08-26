@@ -1,4 +1,4 @@
-export const PLAYER_CONTROLS_IDLE_MS = 2000;
+export const PLAYER_CONTROLS_IDLE_MS = 900;
 
 export function shouldKeepPlayerControlsVisible(state: {
   finePointer: boolean;
