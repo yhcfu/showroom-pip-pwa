@@ -12,7 +12,12 @@
   <body class="player-page">
     <main class="player-stage" aria-label="SHOWROOM動画プレイヤー">
       <div class="player-overlay">
-        <a id="back-to-app" class="player-tool" href="../app/">← 履歴</a>
+        <a id="back-to-app" class="player-tool icon-tool player-back" href="../app/" aria-label="履歴へ戻る" title="履歴へ戻る">
+          <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+          <span class="tool-label">履歴</span>
+        </a>
         <p id="status" class="player-status" role="status" aria-live="polite">リンクを確認中…</p>
         <div class="player-tools">
           <button id="share-button" class="player-tool icon-tool" type="button" aria-label="共有URLをコピー" title="共有URLをコピー" hidden>
@@ -33,22 +38,30 @@
             </svg>
             <span class="tool-label">L/R</span>
           </button>
-          <button id="screenshot-button" class="player-tool icon-tool" type="button" aria-label="スクリーンショット" aria-keyshortcuts="S" title="スクリーンショット (S)" disabled>
-            <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <button id="screenshot-button" class="player-tool icon-tool" type="button" aria-label="スクリーンショットを保存・コピー" aria-keyshortcuts="S" title="スクリーンショットを保存・コピー (S)" disabled>
+            <svg class="tool-icon default-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M4 7h4l1.5-2h5L16 7h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path>
               <circle cx="12" cy="13" r="3.5"></circle>
             </svg>
-            <span class="tool-label">撮影</span>
+            <svg class="tool-icon success-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="m5 12 4 4L19 6"></path>
+            </svg>
+            <span id="screenshot-label" class="tool-label">撮影</span>
             <kbd class="tool-shortcut" aria-hidden="true">S</kbd>
           </button>
-          <button id="pip-button" class="player-tool icon-tool" type="button" aria-label="ピクチャーインピクチャー" title="ピクチャーインピクチャー" disabled>
+          <button id="pip-button" class="player-tool icon-tool" type="button" aria-label="ピクチャーインピクチャー" title="ピクチャーインピクチャー" aria-pressed="false" disabled>
             <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="3" y="5" width="18" height="14" rx="2"></rect>
               <rect x="12" y="11" width="7" height="6" rx="1"></rect>
             </svg>
-            <span class="tool-label">PiP</span>
+            <span id="pip-label" class="tool-label">PiP</span>
           </button>
-          <button id="fullscreen-button" class="player-tool" type="button">⛶</button>
+          <button id="fullscreen-button" class="player-tool icon-tool" type="button" aria-label="全画面" title="全画面" aria-pressed="false">
+            <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"></path>
+            </svg>
+            <span id="fullscreen-label" class="tool-label">全画面</span>
+          </button>
         </div>
         <div id="balance-panel" class="balance-panel" hidden>
           <label class="sr-only" for="balance">左右の音声バランス</label>

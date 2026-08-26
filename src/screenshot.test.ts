@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildScreenshotFilename, shouldCaptureFromShortcut } from "./screenshot";
+import { buildScreenshotFilename, copyPngToClipboard, shouldCaptureFromShortcut } from "./screenshot";
 
 describe("video screenshot", () => {
   it("builds a filesystem-safe PNG name", () => {
@@ -23,5 +23,36 @@ describe("video screenshot", () => {
     expect(shouldCaptureFromShortcut({ ...base, editing: true })).toBe(false);
     expect(shouldCaptureFromShortcut({ ...base, ctrlKey: true })).toBe(false);
     expect(shouldCaptureFromShortcut({ ...base, repeat: true })).toBe(false);
+  });
+
+  it("starts writing the pending PNG to the clipboard", async () => {
+    let resolvePng!: (blob: Blob) => void;
+    const png = new Promise<Blob>((resolve) => {
+      resolvePng = resolve;
+    });
+    const written: Array<{ png: Promise<Blob> }> = [];
+    const copy = copyPngToClipboard(png, {
+      createItem: (pendingPng) => ({ png: pendingPng }),
+      write: async (items) => {
+        written.push(...items);
+        await items[0].png;
+      },
+    });
+
+    expect(written).toHaveLength(1);
+    expect(written[0].png).toBe(png);
+    resolvePng(new Blob(["png"], { type: "image/png" }));
+    await expect(copy).resolves.toBe(true);
+  });
+
+  it("keeps screenshot delivery successful when image clipboard is unavailable", async () => {
+    const png = Promise.resolve(new Blob(["png"], { type: "image/png" }));
+    await expect(copyPngToClipboard(png, null)).resolves.toBe(false);
+    await expect(copyPngToClipboard(png, {
+      createItem: (pendingPng) => ({ png: pendingPng }),
+      write: async () => {
+        throw new DOMException("denied", "NotAllowedError");
+      },
+    })).resolves.toBe(false);
   });
 });

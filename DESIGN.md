@@ -47,20 +47,20 @@
 - Typography: system sans-serif, compact controls, one small product title, no marketing copy
 - Spacing/layout rhythm: 8px base rhythm; one compact surface; dividers instead of nested cards
 - Shape/radius/elevation: 12–18px radii; minimal shadow; no glass panels for ordinary sections
-- Motion: a small loading pulse and auto-hiding player overlay; honor reduced-motion preferences
+- Motion: a small loading pulse; on fine-pointer devices, hide the player overlay after 2.5 seconds without input while playback continues, then reveal it immediately on pointer or keyboard activity; honor reduced-motion preferences
 - Imagery/iconography: player actions use familiar inline SVG icons with accessible names; desktop pairs icons with short labels, while compact touch layouts show icons only; no illustrative assets or icon-library dependency
 
 ## Components
 
 - Existing components to reuse: room form, history rows, collapsed settings, player controls
 - New/changed components: pinned history action, clean share-URL action, conditional L/R balance panel, screenshot action, full-viewport video stage
-- Variants and states: playback stays identical across devices; installation guidance differs by install capability; Web Audio balance is a PC-only enhancement
+- Variants and states: playback stays identical across devices; installation guidance differs by install capability; Web Audio balance is a PC-only enhancement; copy and capture acknowledge success in place, while PiP, fullscreen, and the open L/R panel expose a restrained active state
 - Token/component ownership: `src/style.css` owns the small local visual system
 
 ## Accessibility
 
 - Target standard: practical WCAG 2.2 AA
-- Keyboard/focus behavior: all actions remain links, buttons, or inputs; visible focus styles; form submission opens the dedicated player; desktop `S` captures the current video frame unless the user is editing a control
+- Keyboard/focus behavior: all actions remain links, buttons, or inputs; visible focus styles; focused player controls never auto-hide; any keyboard input reveals the desktop overlay; form submission opens the dedicated player; desktop `S` captures the current video frame unless the user is editing a control
 - Contrast/readability: primary and muted text retain readable contrast on dark surfaces
 - Screen-reader semantics: concise section headings, visually hidden field labels, `aria-label` and `aria-pressed` on compact actions, live error/loading status
 - Reduced motion and sensory considerations: no essential motion or color-only status
@@ -69,11 +69,12 @@
 
 - Supported breakpoints/devices: desktop Chrome/Edge, Android Chrome, current iPhone Safari/PWA
 - Layout adaptations: the launcher stays compact on narrow screens; the player fills the visual viewport and letterboxes video without cropping; touch devices reserve one compact row for icon-only project controls above the native video surface
-- Touch/hover differences: touch devices keep the custom toolbar outside the `<video controls>` box so native media controls cannot overlap it; hover-capable devices retain the auto-hiding overlay
+- Touch/hover differences: touch devices keep the custom toolbar visible outside the `<video controls>` box so native media controls cannot overlap it or resize the video when tools appear; fine-pointer devices use recent activity rather than `:hover` to control the overlay
 
 ## Interaction states
 
 - Loading: Player reports HLS loading and keeps PiP disabled until metadata exists
+- Playback: desktop controls stay visible while paused, buffering, focused, or showing the L/R panel; during uninterrupted playback they fade after 2.5 seconds of inactivity and return on pointer or keyboard input
 - Empty: history says that no rooms have been opened
 - Error: invalid room, clipboard failure, and HLS failure appear in the live status
 - Success: successful playback removes the loading status; copy success is reflected briefly in the control itself; frame capture reports a short save confirmation
@@ -92,7 +93,7 @@
 - Design-token constraints: extend current local colors and radii; do not add a component library
 - Performance constraints: no new runtime dependency; media never passes through the resolver; create the Web Audio graph only after an explicit L/R interaction
 - Compatibility constraints: the PWA stays on GitHub Pages; every HTML surface declares `noindex`; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope; fine-pointer Chrome/Edge prefer HLS.js/MSE so L/R remains available even when the OS offers native HLS; mobile and Safari stay on native HLS without L/R; frame capture requires CORS-clean video; custom and native media controls must use separate boxes on coarse-pointer devices
-- Test/screenshot expectations: unit-test history normalization, balance value handling, resolver validation, and shared Player routing; verify full-viewport desktop and mobile layouts plus the public Pages build
+- Test/screenshot expectations: unit-test history normalization, balance value handling, resolver validation, shared Player routing, and overlay visibility rules; verify full-viewport desktop and mobile layouts, idle hiding and input-driven reveal, plus the public Pages build
 
 ## Open questions
 

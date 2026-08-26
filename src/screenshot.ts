@@ -4,6 +4,25 @@ export function buildScreenshotFilename(roomKey: string | undefined, capturedAt 
   return `showroom-${room}-${timestamp}.png`;
 }
 
+export type ImageClipboardDependencies<T> = {
+  createItem: (png: Promise<Blob>) => T;
+  write: (items: T[]) => Promise<void>;
+};
+
+export async function copyPngToClipboard<T>(
+  png: Promise<Blob>,
+  dependencies: ImageClipboardDependencies<T> | null,
+): Promise<boolean> {
+  if (!dependencies) return false;
+  try {
+    const item = dependencies.createItem(png);
+    await dependencies.write([item]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function shouldCaptureFromShortcut(input: {
   key: string;
   repeat: boolean;

@@ -9,12 +9,15 @@ import {
   shouldOfferAudioBalance,
 } from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
+import { LIVE_HLS_CONFIG } from "./live-playback";
+import { PLAYER_CONTROLS_IDLE_MS, shouldKeepPlayerControlsVisible } from "./player-controls";
 import { resolveRoom } from "./resolver";
-import { buildScreenshotFilename, shouldCaptureFromShortcut } from "./screenshot";
+import { buildScreenshotFilename, copyPngToClipboard, shouldCaptureFromShortcut } from "./screenshot";
 import { buildPlayerUrl, buildRoomPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
 
 declare global {
   interface HTMLVideoElement {
+    webkitPresentationMode?: string;
     webkitSupportsPresentationMode?: (mode: string) => boolean;
     webkitSetPresentationMode?: (mode: string) => void;
   }
@@ -23,6 +26,7 @@ declare global {
 const HISTORY_KEY = "showroom-pip-history-v1";
 const resolverUrl = import.meta.env.VITE_RESOLVER_URL || "";
 const stage = document.querySelector<HTMLElement>(".player-stage")!;
+const overlay = document.querySelector<HTMLElement>(".player-overlay")!;
 const video = document.querySelector<HTMLVideoElement>("#video")!;
 const shareButton = document.querySelector<HTMLButtonElement>("#share-button")!;
 const shareLabel = document.querySelector<HTMLElement>("#share-label")!;
@@ -31,13 +35,17 @@ const balancePanel = document.querySelector<HTMLElement>("#balance-panel")!;
 const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
 const balanceValue = document.querySelector<HTMLOutputElement>("#balance-value")!;
 const screenshotButton = document.querySelector<HTMLButtonElement>("#screenshot-button")!;
+const screenshotLabel = document.querySelector<HTMLElement>("#screenshot-label")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
+const pipLabel = document.querySelector<HTMLElement>("#pip-label")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
+const fullscreenLabel = document.querySelector<HTMLElement>("#fullscreen-label")!;
 const emptyState = document.querySelector<HTMLElement>("#empty-state")!;
 const emptyMessage = document.querySelector<HTMLElement>("#empty-message")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const backToApp = document.querySelector<HTMLAnchorElement>("#back-to-app")!;
 const appBase = new URL(`${import.meta.env.BASE_URL}app/`, location.origin);
+const finePointerQuery = matchMedia(DESKTOP_AUDIO_BALANCE_QUERY);
 backToApp.href = appBase.toString();
 
 let hls: import("hls.js").default | null = null;
@@ -49,9 +57,36 @@ let stereoPanner: StereoPannerNode | null = null;
 let balanceEnabled = false;
 let copyResetTimer: number | undefined;
 let screenshotStatusTimer: number | undefined;
+let controlsIdleTimer: number | undefined;
 
 function isDesktopChromium(): boolean {
-  return matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches && isChromiumUserAgent(navigator.userAgent);
+  return finePointerQuery.matches && isChromiumUserAgent(navigator.userAgent);
+}
+
+function clearControlsIdleTimer() {
+  window.clearTimeout(controlsIdleTimer);
+  controlsIdleTimer = undefined;
+}
+
+function keepControlsVisible(): boolean {
+  return shouldKeepPlayerControlsVisible({
+    finePointer: finePointerQuery.matches,
+    playing: stage.classList.contains("playing"),
+    buffering: stage.classList.contains("buffering"),
+    focusWithin: overlay.matches(":focus-within"),
+    panelOpen: !balancePanel.hidden,
+    blockingStatus: !status.hidden && status.classList.contains("error"),
+  });
+}
+
+function revealControls(scheduleHide = true) {
+  stage.classList.remove("controls-idle");
+  clearControlsIdleTimer();
+  if (!scheduleHide || keepControlsVisible()) return;
+  controlsIdleTimer = window.setTimeout(() => {
+    controlsIdleTimer = undefined;
+    if (!keepControlsVisible()) stage.classList.add("controls-idle");
+  }, PLAYER_CONTROLS_IDLE_MS);
 }
 
 function setStatus(message: string, isError = false) {
@@ -60,6 +95,7 @@ function setStatus(message: string, isError = false) {
   status.classList.toggle("error", isError);
   emptyState.classList.toggle("error", isError);
   if (isError) emptyMessage.textContent = message;
+  if (isError) revealControls(false);
 }
 
 function enablePipWhenReady() {
@@ -73,17 +109,27 @@ function enableScreenshotWhenReady() {
   screenshotButton.disabled = video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth === 0 || video.videoHeight === 0;
 }
 
-function showScreenshotSuccess() {
-  const message = "画像を保存しました。";
+function showScreenshotSuccess(copied: boolean) {
+  const message = copied ? "画像を保存・コピーしました。" : "画像を保存しました（コピー不可）。";
   setStatus(message);
+  screenshotButton.classList.add("is-success");
+  screenshotButton.setAttribute("aria-label", message);
+  screenshotButton.title = message;
+  screenshotLabel.textContent = "保存済み";
   window.clearTimeout(screenshotStatusTimer);
   screenshotStatusTimer = window.setTimeout(() => {
+    screenshotButton.classList.remove("is-success");
+    screenshotButton.setAttribute("aria-label", "スクリーンショットを保存・コピー");
+    screenshotButton.title = "スクリーンショットを保存・コピー (S)";
+    screenshotLabel.textContent = "撮影";
     if (status.textContent === message) setStatus("");
   }, 1200);
 }
 
 async function captureScreenshot() {
   if (screenshotButton.disabled) return;
+  screenshotButton.disabled = true;
+  screenshotButton.setAttribute("aria-busy", "true");
   try {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
@@ -91,9 +137,19 @@ async function captureScreenshot() {
     const context = canvas.getContext("2d");
     if (!context) throw new Error("画像を作成できませんでした。");
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((resolve, reject) => {
+    const blobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((value) => value ? resolve(value) : reject(new Error("画像を作成できませんでした。")), "image/png");
     });
+    const clipboardCopy = copyPngToClipboard(
+      blobPromise,
+      typeof navigator.clipboard?.write === "function" && typeof ClipboardItem !== "undefined"
+        ? {
+            createItem: (png) => new ClipboardItem({ "image/png": png }),
+            write: (items) => navigator.clipboard.write(items),
+          }
+        : null,
+    );
+    const blob = await blobPromise;
     const downloadUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrl;
@@ -103,15 +159,33 @@ async function captureScreenshot() {
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-    showScreenshotSuccess();
+    showScreenshotSuccess(await clipboardCopy);
   } catch {
     setStatus("この配信では画像を保存できません。", true);
+  } finally {
+    screenshotButton.removeAttribute("aria-busy");
+    enableScreenshotWhenReady();
   }
+}
+
+function setPipState(active: boolean) {
+  pipButton.setAttribute("aria-pressed", String(active));
+  pipButton.setAttribute("aria-label", active ? "ピクチャーインピクチャーを終了" : "ピクチャーインピクチャー");
+  pipButton.title = active ? "ピクチャーインピクチャーを終了" : "ピクチャーインピクチャー";
+  pipLabel.textContent = active ? "終了" : "PiP";
+}
+
+function setFullscreenState(active: boolean) {
+  fullscreenButton.setAttribute("aria-pressed", String(active));
+  fullscreenButton.setAttribute("aria-label", active ? "全画面を終了" : "全画面");
+  fullscreenButton.title = active ? "全画面を終了" : "全画面";
+  fullscreenLabel.textContent = active ? "終了" : "全画面";
 }
 
 function setBalancePanel(open: boolean) {
   balancePanel.hidden = !open;
   balanceButton.setAttribute("aria-expanded", String(open));
+  revealControls(!open);
 }
 
 function updateBalanceDisplay(value: number) {
@@ -127,7 +201,7 @@ function updateBalanceDisplay(value: number) {
 function enableAudioBalance() {
   const hasAudioContext = typeof AudioContext !== "undefined";
   const supported = shouldOfferAudioBalance({
-    desktopPointer: matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches,
+    desktopPointer: finePointerQuery.matches,
     chromium: isChromiumUserAgent(navigator.userAgent),
     audioContext: hasAudioContext,
     stereoPanner: hasAudioContext && typeof AudioContext.prototype.createStereoPanner === "function",
@@ -171,16 +245,44 @@ video.addEventListener("loadedmetadata", () => {
 });
 video.addEventListener("loadeddata", enableScreenshotWhenReady);
 video.addEventListener("emptied", () => {
+  stage.classList.remove("playing", "buffering");
+  revealControls(false);
   pipButton.disabled = true;
   screenshotButton.disabled = true;
 });
 video.addEventListener("error", () => {
+  stage.classList.remove("playing", "buffering");
   pipButton.disabled = true;
   screenshotButton.disabled = true;
   setStatus("動画を読み込めませんでした。配信が終了していないか確認してください。", true);
 });
-video.addEventListener("playing", () => stage.classList.add("playing"));
-video.addEventListener("pause", () => stage.classList.remove("playing"));
+video.addEventListener("playing", () => {
+  stage.classList.add("playing");
+  stage.classList.remove("buffering");
+  revealControls();
+});
+video.addEventListener("pause", () => {
+  stage.classList.remove("playing", "buffering");
+  revealControls(false);
+});
+video.addEventListener("waiting", () => {
+  stage.classList.add("buffering");
+  revealControls(false);
+});
+video.addEventListener("canplay", () => {
+  stage.classList.remove("buffering");
+  revealControls(!video.paused);
+});
+
+stage.addEventListener("pointermove", () => revealControls(), { passive: true });
+stage.addEventListener("pointerdown", () => revealControls(), { passive: true });
+stage.addEventListener("focusin", (event) => {
+  const target = event.target;
+  revealControls(!(target instanceof Node && overlay.contains(target)));
+});
+stage.addEventListener("focusout", () => queueMicrotask(() => revealControls()));
+window.addEventListener("focus", () => revealControls());
+finePointerQuery.addEventListener("change", () => revealControls());
 
 function rememberHandoff(handoff: PlayerHandoff) {
   if (!handoff.roomKey) return;
@@ -215,7 +317,7 @@ async function loadStream(handoff: PlayerHandoff) {
     if (Hls.isSupported()) {
       video.crossOrigin = "anonymous";
       enableAudioBalance();
-      const instance = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
+      const instance = new Hls(LIVE_HLS_CONFIG);
       hls = instance;
       instance.loadSource(handoff.streamUrl);
       instance.attachMedia(video);
@@ -278,6 +380,7 @@ balanceInput.addEventListener("input", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  revealControls();
   if (event.key === "Escape") setBalancePanel(false);
   const target = event.target;
   const editing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
@@ -287,7 +390,7 @@ document.addEventListener("keydown", (event) => {
     altKey: event.altKey,
     ctrlKey: event.ctrlKey,
     metaKey: event.metaKey,
-    desktop: matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches,
+    desktop: finePointerQuery.matches,
     editing,
   }) && !screenshotButton.disabled) {
     event.preventDefault();
@@ -318,6 +421,12 @@ pipButton.addEventListener("click", async () => {
   }
 });
 
+video.addEventListener("enterpictureinpicture", () => setPipState(true));
+video.addEventListener("leavepictureinpicture", () => setPipState(false));
+video.addEventListener("webkitpresentationmodechanged", () => {
+  setPipState(video.webkitPresentationMode === "picture-in-picture");
+});
+
 fullscreenButton.addEventListener("click", async () => {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
@@ -328,12 +437,12 @@ fullscreenButton.addEventListener("click", async () => {
 });
 
 document.addEventListener("fullscreenchange", () => {
-  fullscreenButton.textContent = document.fullscreenElement ? "×" : "⛶";
-  fullscreenButton.setAttribute("aria-label", document.fullscreenElement ? "全画面を終了" : "全画面");
+  setFullscreenState(document.fullscreenElement !== null);
 });
 
 if (typeof video.requestFullscreen !== "function") fullscreenButton.hidden = true;
-fullscreenButton.setAttribute("aria-label", "全画面");
+setPipState(false);
+setFullscreenState(false);
 
 try {
   const handoff = readPlayerHandoff(location.hash);

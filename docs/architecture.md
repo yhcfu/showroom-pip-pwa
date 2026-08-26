@@ -34,6 +34,8 @@ iPhoneのホーム画面Web AppとSafariのstorageが分離される環境では
 
 PC Chrome/Edgeでは、OSがnative HLSを提供する場合もHLS.js/MSEを優先します。利用者が`L/R`を操作した時だけ`AudioContext`を作り、`MediaElementAudioSourceNode → StereoPannerNode → destination`へ接続します。値は端末内へ保存します。スマートフォンではL/Rを提供しません。SafariはWebKitの既知問題を避けるためnative HLSを使い、UIも表示しません。
 
-スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ね、再生中かつ非操作時に自動で隠します。
+HLS.jsのback bufferには時間制限を設けません。視聴開始後に読み込んだsegmentを、ブラウザが保持できる範囲で残します。live latencyによるlive edgeへの強制seekも無効です。保持済みsegmentにはシークバーから戻れます。ページを開く前のsegmentやブラウザが破棄したsegmentは復元しません。Safariのnative HLSはこの設定の対象外です。
+
+スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ね、再生中にポインター・キーボード入力が2.5秒なければ隠します。入力時は即座に戻し、一時停止中、バッファリング中、ツールへのフォーカス中、L/Rパネルの表示中、エラー表示中は隠しません。
 
 映像はSHOWROOMのCDNから端末へ直接流れます。GitHub PagesとVercel Resolverは映像を中継しません。
