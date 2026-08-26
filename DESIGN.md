@@ -15,14 +15,14 @@
 
 ## Product goals
 
-- Goals: reopen a known SHOWROOM room with the fewest repeat actions; show only its video in a responsive player; provide PiP on iPhone and Android; give PC users a setup-free focused player
+- Goals: reopen a known SHOWROOM room with the fewest repeat actions; show only its video in a responsive player; provide PiP on iPhone and Android; give PC users a setup-free focused player and one-action frame capture
 - Non-goals: comments, gifts, recording, paid streams, background notifications, account integration
 - Success signals: every device uses the same room form and Player URL without initial playback setup; mobile users can enter PiP from the Player; a returning user can start from history
 
 ## Personas and jobs
 
 - Primary personas: a single owner using Chrome/Edge on PC, Safari on iPhone, or Chrome on Android
-- User jobs: open a live room; watch the video without SHOWROOM chrome; resize or fullscreen it on PC; enter PiP on mobile; reopen a recent room
+- User jobs: open a live room; watch the video without SHOWROOM chrome; resize or fullscreen it on PC; save the current video frame; enter PiP on mobile; reopen a recent room
 - Key contexts of use: personal device, one-handed mobile use, desktop multitasking on Windows or macOS
 
 ## Information architecture
@@ -53,14 +53,14 @@
 ## Components
 
 - Existing components to reuse: room form, history rows, collapsed settings, player controls
-- New/changed components: pinned history action, clean share-URL action, conditional L/R balance panel, full-viewport video stage
+- New/changed components: pinned history action, clean share-URL action, conditional L/R balance panel, screenshot action, full-viewport video stage
 - Variants and states: playback stays identical across devices; installation guidance differs by install capability; Web Audio balance is a PC-only enhancement
 - Token/component ownership: `src/style.css` owns the small local visual system
 
 ## Accessibility
 
 - Target standard: practical WCAG 2.2 AA
-- Keyboard/focus behavior: all actions remain links, buttons, or inputs; visible focus styles; form submission opens the dedicated player
+- Keyboard/focus behavior: all actions remain links, buttons, or inputs; visible focus styles; form submission opens the dedicated player; desktop `S` captures the current video frame unless the user is editing a control
 - Contrast/readability: primary and muted text retain readable contrast on dark surfaces
 - Screen-reader semantics: concise section headings, visually hidden field labels, `aria-label` and `aria-pressed` on compact actions, live error/loading status
 - Reduced motion and sensory considerations: no essential motion or color-only status
@@ -76,7 +76,7 @@
 - Loading: Player reports HLS loading and keeps PiP disabled until metadata exists
 - Empty: history says that no rooms have been opened
 - Error: invalid room, clipboard failure, and HLS failure appear in the live status
-- Success: successful playback removes the loading status; copy success is reflected briefly in the control itself
+- Success: successful playback removes the loading status; copy success is reflected briefly in the control itself; frame capture reports a short save confirmation
 - Disabled: PiP remains disabled until supported and ready
 - Offline/slow network: cached launcher may open; SHOWROOM resolution and playback require network
 
@@ -91,7 +91,7 @@
 - Framework/styling system: Vite, TypeScript, plain HTML/CSS
 - Design-token constraints: extend current local colors and radii; do not add a component library
 - Performance constraints: no new runtime dependency; media never passes through the resolver; create the Web Audio graph only after an explicit L/R interaction
-- Compatibility constraints: the PWA stays on GitHub Pages; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope; fine-pointer Chrome/Edge prefer HLS.js/MSE so L/R remains available even when the OS offers native HLS; mobile and Safari stay on native HLS without L/R; custom and native media controls must use separate boxes on coarse-pointer devices
+- Compatibility constraints: the PWA stays on GitHub Pages; every HTML surface declares `noindex`; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope; fine-pointer Chrome/Edge prefer HLS.js/MSE so L/R remains available even when the OS offers native HLS; mobile and Safari stay on native HLS without L/R; frame capture requires CORS-clean video; custom and native media controls must use separate boxes on coarse-pointer devices
 - Test/screenshot expectations: unit-test history normalization, balance value handling, resolver validation, and shared Player routing; verify full-viewport desktop and mobile layouts plus the public Pages build
 
 ## Open questions

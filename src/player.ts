@@ -10,6 +10,7 @@ import {
 } from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
 import { resolveRoom } from "./resolver";
+import { buildScreenshotFilename, shouldCaptureFromShortcut } from "./screenshot";
 import { buildPlayerUrl, buildRoomPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
 
 declare global {
@@ -29,6 +30,7 @@ const balanceButton = document.querySelector<HTMLButtonElement>("#balance-button
 const balancePanel = document.querySelector<HTMLElement>("#balance-panel")!;
 const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
 const balanceValue = document.querySelector<HTMLOutputElement>("#balance-value")!;
+const screenshotButton = document.querySelector<HTMLButtonElement>("#screenshot-button")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
 const emptyState = document.querySelector<HTMLElement>("#empty-state")!;
@@ -40,11 +42,13 @@ backToApp.href = appBase.toString();
 
 let hls: import("hls.js").default | null = null;
 let shareUrl: string | null = null;
+let currentRoomKey: string | undefined;
 let audioContext: AudioContext | null = null;
 let audioSource: MediaElementAudioSourceNode | null = null;
 let stereoPanner: StereoPannerNode | null = null;
 let balanceEnabled = false;
 let copyResetTimer: number | undefined;
+let screenshotStatusTimer: number | undefined;
 
 function isDesktopChromium(): boolean {
   return matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches && isChromiumUserAgent(navigator.userAgent);
@@ -63,6 +67,46 @@ function enablePipWhenReady() {
   const webkitPip = video.webkitSupportsPresentationMode?.("picture-in-picture") === true;
   pipButton.disabled = video.readyState === HTMLMediaElement.HAVE_NOTHING || (!standardPip && !webkitPip);
   setStatus("");
+}
+
+function enableScreenshotWhenReady() {
+  screenshotButton.disabled = video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth === 0 || video.videoHeight === 0;
+}
+
+function showScreenshotSuccess() {
+  const message = "画像を保存しました。";
+  setStatus(message);
+  window.clearTimeout(screenshotStatusTimer);
+  screenshotStatusTimer = window.setTimeout(() => {
+    if (status.textContent === message) setStatus("");
+  }, 1200);
+}
+
+async function captureScreenshot() {
+  if (screenshotButton.disabled) return;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("画像を作成できませんでした。");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("画像を作成できませんでした。")), "image/png");
+    });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = buildScreenshotFilename(currentRoomKey);
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    showScreenshotSuccess();
+  } catch {
+    setStatus("この配信では画像を保存できません。", true);
+  }
 }
 
 function setBalancePanel(open: boolean) {
@@ -121,12 +165,18 @@ async function applyAudioBalance(value: number) {
   }
 }
 
-video.addEventListener("loadedmetadata", enablePipWhenReady);
+video.addEventListener("loadedmetadata", () => {
+  enablePipWhenReady();
+  enableScreenshotWhenReady();
+});
+video.addEventListener("loadeddata", enableScreenshotWhenReady);
 video.addEventListener("emptied", () => {
   pipButton.disabled = true;
+  screenshotButton.disabled = true;
 });
 video.addEventListener("error", () => {
   pipButton.disabled = true;
+  screenshotButton.disabled = true;
   setStatus("動画を読み込めませんでした。配信が終了していないか確認してください。", true);
 });
 video.addEventListener("playing", () => stage.classList.add("playing"));
@@ -149,6 +199,8 @@ async function loadStream(handoff: PlayerHandoff) {
   hls = null;
   emptyState.hidden = true;
   pipButton.disabled = true;
+  screenshotButton.disabled = true;
+  currentRoomKey = handoff.roomKey;
   shareUrl = handoff.roomKey ? buildRoomPlayerUrl(handoff.roomKey, location.href) : null;
   shareButton.hidden = shareUrl === null;
   balanceEnabled = false;
@@ -211,6 +263,10 @@ shareButton.addEventListener("click", async () => {
   }
 });
 
+screenshotButton.addEventListener("click", () => {
+  void captureScreenshot();
+});
+
 balanceButton.addEventListener("click", () => {
   const open = balancePanel.hidden;
   setBalancePanel(open);
@@ -223,6 +279,20 @@ balanceInput.addEventListener("input", () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") setBalancePanel(false);
+  const target = event.target;
+  const editing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
+  if (shouldCaptureFromShortcut({
+    key: event.key,
+    repeat: event.repeat,
+    altKey: event.altKey,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    desktop: matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches,
+    editing,
+  }) && !screenshotButton.disabled) {
+    event.preventDefault();
+    void captureScreenshot();
+  }
 });
 
 document.addEventListener("pointerdown", (event) => {

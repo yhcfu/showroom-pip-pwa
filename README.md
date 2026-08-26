@@ -10,7 +10,9 @@ SHOWROOMの公開ライブを、映像だけで見る個人用PWAです。操作
 2. 「開く」を押す。
 3. PCではウィンドウ追従表示または全画面、スマートフォンではPiPを使う。
 
-Playerの`URL`は、ルームの共有用URLをコピーする操作です。PCのChrome/Edgeでは`L/R`からPlayer音声の左右バランスを調整できます。スマートフォンとSafariには表示しません。
+Playerの`URL`は、ルームの共有用URLをコピーします。カメラボタンなら、表示中の動画をPNGで保存できます。PCでは`S`キーも使えます。
+
+`L/R`はPC版Chrome/Edge限定です。音声の左右バランスを調整できます。
 
 初回設定はありません。Shortcut、ブックマークレット、ブラウザ拡張も不要です。PWAは`/app/`、動画プレイヤーは`/player/`へ分け、Playerをインストール対象のscopeから外しています。
 
@@ -23,6 +25,10 @@ Playerの`URL`は、ルームの共有用URLをコピーする操作です。PC�
 SHOWROOMのJSON APIには外部サイト向けCORSがありません。Service WorkerやWASMでも越えられないため、Vercel Functionが全端末の配信状態と公開HLS URLだけを取得します。映像はSHOWROOMのCDNからブラウザへ直送されます。Cookie、履歴、動画はResolverへ送りません。
 
 PWAを閉じている間の配信ポーリングとWeb Push通知は、現在のscope外です。
+
+すべてのHTMLページで`noindex`を宣言しています。検索結果、snippet、画像indexに出さないための指定です。Googleがこの指定を取得できるよう、`robots.txt`ではページを遮断しません。
+
+なお、GitHub Pagesでは任意のbotへHTTP 403を返せません。アクセスそのものを拒否するには、認証付きhostingかedge制御が必要です。
 
 バックグラウンド通知を追加する場合の設計条件は[サーバーフェーズ](docs/server-phase.md)へ分離しました。現行UIには、動作しない通知スイッチやResolver設定を置いていません。
 
