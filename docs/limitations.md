@@ -6,9 +6,8 @@
 - SHOWROOM JSON APIは外部origin向けCORSを返さない。
 - iOSのstandalone PWAではPiPが失敗する既知問題があるため、scope外のSafari playerを使う。
 - iPhoneのホーム画面Web AppとSafariはstorageが分かれるため、iOSのPWA履歴はroomIdではなくroom keyで重複排除する。
-- Androidではブックマークレットを一度登録し、SHOWROOMページ上で実行する必要がある。
-- PCの動画専用PlayerはVercel Resolverへ接続できるときだけ配信URLを取得できる。Resolver停止時や無料枠超過時は再生できない。
-- PCのPiPは対象外。ウィンドウ追従表示とFullscreen APIによる全画面を提供する。
+- すべての端末でVercel Resolverへ接続できるときだけ配信URLを取得できる。Resolver停止時や無料枠超過時は再生できない。
+- PCではウィンドウ追従表示とFullscreen APIによる全画面を主な表示方法とする。ブラウザが対応する場合はPiPボタンも利用できる。
 - 現在のResolverは要求時のURL解決だけを行うため、配信開始の自動検知と通知はできない。
 - 配信終了、room key誤り、限定・有料配信、地域制限には対応しない。
 - 非公開APIのfield名やendpointが変われば修正が必要になる。

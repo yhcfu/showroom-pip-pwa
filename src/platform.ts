@@ -10,7 +10,3 @@ export function detectPlatform(navigatorLike: NavigatorLike): Platform {
   if (/Android/.test(userAgent)) return "android";
   return "desktop";
 }
-
-export function buildShowroomRoomUrl(roomKey: string): string {
-  return `https://www.showroom-live.com/r/${encodeURIComponent(roomKey)}`;
-}

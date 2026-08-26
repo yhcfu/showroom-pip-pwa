@@ -23,12 +23,6 @@ export function parseRoomKey(input: string): string {
   return key;
 }
 
-export const IOS_SHORTCUT_NAME = "SHOWROOM-PiP";
-
-export function buildShortcutUrl(room: string): string {
-  return `shortcuts://run-shortcut?name=${encodeURIComponent(IOS_SHORTCUT_NAME)}&input=text&text=${encodeURIComponent(room.trim())}`;
-}
-
 export type PlayerHandoff = {
   streamUrl: string;
   roomKey?: string;

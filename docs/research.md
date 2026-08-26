@@ -17,11 +17,12 @@
 
 SHOWROOMのルームページはiframe埋め込みを拒否します。また、ルーム状態とstreaming URLのJSON endpointはSHOWROOMページからは取得できますが、GitHub Pagesのoriginから直接`fetch`するためのCORS許可はありません。
 
-その差を端末側だけで吸収するため、次の2経路に限定しました。
+Resolver導入前は、その差を端末側で吸収する必要がありました。
 
-- iPhone: AppleショートカットのHTTPアクションで取得する。
-- Android: SHOWROOMページ上のブックマークレットでsame-origin取得する。
-- PC: 小さなsame-origin許可済みResolverでHLS URLを取得し、PWAの動画専用Playerで再生する。
+- iPhone: AppleショートカットのHTTPアクションで取得する案。
+- Android: SHOWROOMページ上のブックマークレットでsame-origin取得する案。
+
+現在は廃止しています。全端末が同じResolverを使い、PWAはroom keyだけをPlayerへ渡します。
 
 ## WASMでは解決しない
 
@@ -31,6 +32,6 @@ WASMが有効なのは、取得済みデータの解析やcodec処理です。�
 
 ## 最小のサーバーを採用する判断
 
-PCでもSHOWROOM UIを除いたPlayerを提供するには、ブラウザ外でAPIを2回呼ぶ処理だけは必要です。そこでVercel Functionを採用し、状態保存、動画proxy、定期実行を持たせません。映像帯域はVercelを通らず、利用者のブラウザがSHOWROOM CDNから直接受け取ります。
+SHOWROOM UIを除いたPlayerには、ブラウザ外でAPIを2回呼ぶ処理だけが必要です。そこでVercel Functionを採用しました。状態保存、動画proxy、定期実行は持たせず、映像帯域もVercelを通しません。
 
 バックグラウンド通知に必要な状態管理と定期実行は、引き続き[サーバーフェーズ](server-phase.md)へ分離します。

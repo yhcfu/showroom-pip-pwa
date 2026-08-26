@@ -17,7 +17,7 @@
 
 - Goals: reopen a known SHOWROOM room with the fewest repeat actions; show only its video in a responsive player; provide PiP on iPhone and Android; give PC users a setup-free focused player
 - Non-goals: comments, gifts, recording, paid streams, background notifications, account integration
-- Success signals: a PC user can move from a room URL to the local video-only player without setup; an iPhone user can import a ready-made Shortcut; an Android user can reach PiP after one-time bookmarklet setup; a returning user can start from history
+- Success signals: every device uses the same room form and Player URL without initial playback setup; mobile users can enter PiP from the Player; a returning user can start from history
 
 ## Personas and jobs
 
@@ -29,15 +29,15 @@
 
 - Primary navigation: no global navigation
 - Core routes/screens: launcher at `/app/`; player at `/player/`
-- Content hierarchy: platform-specific note, mobile-only setup when required, room input and one primary action, recent rooms
+- Content hierarchy: one device-independent explanation, room input and one primary action, recent rooms, optional PWA installation guide
 
 ## Design principles
 
-- Show only the next action: platform-specific setup and labels replace generic architecture explanations
-- Pay setup cost only where necessary: iPhone imports a signed Shortcut and Android saves a bookmarklet; PC has no setup
-- Make video the destination: desktop navigation stays in the PWA and opens `/player/`, never the decorated SHOWROOM page
+- Show only the next action: one room form replaces platform-specific playback setup and instructions
+- Use one playback path: every platform opens `/player/?room=...`, which resolves and plays the stream
+- Make video the destination: navigation stays on the project's Player, never the decorated SHOWROOM page
 - Keep infrastructure narrow: the resolver returns live metadata and the public HLS URL; media travels directly from SHOWROOM's CDN to the browser
-- Tradeoffs: PC playback depends on a small stateless resolver; iPhone and Android retain their existing platform handoffs for PiP
+- Tradeoffs: all playback depends on a small stateless resolver; iOS Home Screen PiP still relies on `/player/` remaining outside the installed `/app/` scope
 
 ## Visual language
 
@@ -51,8 +51,8 @@
 ## Components
 
 - Existing components to reuse: room form, history rows, install guide, player controls
-- New/changed components: desktop `プレイヤーで見る` action, full-viewport video stage, minimal overlay, stateless HLS resolver, signed iPhone Shortcut installer, Android bookmarklet copy setup
-- Variants and states: iOS Shortcut, Android bookmarklet, desktop setup-free launcher; mobile setup completion remains user-managed
+- New/changed components: shared `プレイヤーで見る` action, full-viewport video stage, minimal overlay, stateless HLS resolver
+- Variants and states: playback is identical across devices; only optional PWA installation guidance differs by browser capability
 - Token/component ownership: `src/style.css` owns the small local visual system
 
 ## Accessibility
@@ -74,28 +74,26 @@
 - Loading: Player reports HLS loading and keeps PiP disabled until metadata exists
 - Empty: history says that no rooms have been opened
 - Error: invalid room, clipboard failure, and HLS failure appear in the live status
-- Success: Android bookmarklet copy, desktop Player navigation, and Player readiness use short outcome text
+- Success: Player navigation and playback readiness use short outcome text
 - Disabled: PiP remains disabled until supported and ready
 - Offline/slow network: cached launcher may open; SHOWROOM resolution and playback require network
 
 ## Content voice
 
 - Tone: short Japanese instructions written as actions
-- Terminology: user-facing copy says `SHOWROOM`, `プレイヤー`, `全画面`, `PiP`; `ブックマーク` appears only on Android; hide `HLS`, `CORS`, `scope`, and `roomId` outside help content
-- Microcopy rules: one sentence per action; say “初回だけ” for setup; say exactly where the next click happens
+- Terminology: user-facing copy says `SHOWROOM`, `プレイヤー`, `全画面`, `PiP`; hide `Shortcut`, `ブックマークレット`, `HLS`, `CORS`, `scope`, and `roomId` outside technical documentation
+- Microcopy rules: one sentence per action; never introduce device-specific playback steps unless a verified browser limitation requires them
 
 ## Implementation constraints
 
 - Framework/styling system: Vite, TypeScript, plain HTML/CSS
 - Design-token constraints: extend current local colors and radii; do not add a component library
-- Performance constraints: no new runtime dependency; the Android bookmarklet remains generated locally
-- Compatibility constraints: the PWA stays on GitHub Pages; a Vercel Function resolves only live metadata for the desktop player; mobile API resolution stays inside the signed Apple Shortcut or the SHOWROOM-origin bookmarklet
-- The installed iOS Shortcut name is `SHOWROOM-PiP`, derived from the distributed filename; the launcher must use that exact name
-- Test/screenshot expectations: unit-test resolver validation, dedicated-player routing, and generated bookmarklet behavior; verify full-viewport desktop and mobile layouts plus the public Pages build
+- Performance constraints: no new runtime dependency; media never passes through the resolver
+- Compatibility constraints: the PWA stays on GitHub Pages; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope
+- Test/screenshot expectations: unit-test resolver validation and shared Player routing; verify full-viewport desktop and mobile layouts plus the public Pages build
 
 ## Open questions
 
-- [ ] If direct signed-file import proves unreliable on current iOS, publish the same reviewed Shortcut through an iCloud share link / owner / iPhone first-run cost
-- [ ] Confirm bookmarklet installation and PiP on a physical Android device / owner / mobile acceptance
-- [ ] Deploy and own a stable free-tier resolver URL, then set the GitHub repository `RESOLVER_URL` variable / owner / deployment
+- [ ] Confirm direct `/app/` → out-of-scope `/player/` navigation and PiP from an installed iPhone Home Screen web app / owner / mobile acceptance
+- [ ] Confirm direct Player PiP on a physical Android device / owner / mobile acceptance
 - [ ] Confirm HLS playback and fullscreen in current Windows Chrome and Edge / owner / desktop acceptance

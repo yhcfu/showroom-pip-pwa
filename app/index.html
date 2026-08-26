@@ -15,31 +15,12 @@
       <header class="hero">
         <p class="eyebrow">PERSONAL VIEWER LAUNCHER</p>
         <h1>SHOWROOM <span>PiP</span></h1>
-        <p id="platform-note" class="lead"></p>
+        <p class="lead">ルームを選ぶだけで、装飾のない専用プレイヤーを開きます。スマートフォンではそのままPiPを使えます。</p>
       </header>
 
       <section class="control-card">
-        <section id="android-tools" class="flow-section" hidden aria-labelledby="android-setup-heading">
-          <span class="step-number" aria-hidden="true">1</span>
-          <div class="flow-content">
-            <h2 id="android-setup-heading">初回だけ：ブックマークを作る</h2>
-            <button id="copy-bookmarklet" class="secondary full-width" type="button">ブックマークレットをコピー</button>
-            <p>任意のブックマークを編集し、URL欄をコピーしたコードへ置き換えます。</p>
-          </div>
-        </section>
-
-        <section id="ios-tools" class="flow-section" hidden aria-labelledby="ios-setup-heading">
-          <span class="step-number" aria-hidden="true">1</span>
-          <div class="flow-content">
-            <h2 id="ios-setup-heading">初回だけ：Shortcutを追加</h2>
-            <p>下のボタンを押し、ダウンロードしたファイルを開いて「ショートカットを追加」を押します。</p>
-            <a class="primary action-link full-width" href="../SHOWROOM-PiP.shortcut" target="_blank" rel="noopener">Shortcutを追加</a>
-            <p class="fallback-hint"><a class="help-link" href="https://github.com/yhcfu/showroom-pip-pwa/blob/main/docs/ios-shortcut.md">うまく開かない場合</a></p>
-          </div>
-        </section>
-
         <section class="flow-section room-section" aria-labelledby="room-heading">
-          <span id="room-step-number" class="step-number" aria-hidden="true">2</span>
+          <span class="step-number" aria-hidden="true">1</span>
           <div class="flow-content">
             <h2 id="room-heading">配信を見る</h2>
             <form id="room-form">
@@ -49,7 +30,7 @@
                 <button id="open-room-button" class="primary" type="submit">プレイヤーで見る</button>
               </div>
             </form>
-            <p id="next-step" class="next-step">映像だけの専用プレイヤーで開きます。</p>
+            <p class="next-step">全端末で同じ動画専用プレイヤーを開きます。</p>
           </div>
         </section>
 
@@ -57,7 +38,7 @@
           <div class="section-heading">
             <div>
               <h2 id="history-heading">最近開いたルーム</h2>
-              <p id="history-hint" class="hint">履歴はこの端末内だけに保存されます。</p>
+              <p class="hint">履歴はこの端末内だけに保存されます。</p>
             </div>
           </div>
           <div id="room-history" class="room-history">

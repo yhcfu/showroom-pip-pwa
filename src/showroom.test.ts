@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildPlayerUrl,
   buildRoomPlayerUrl,
-  buildShortcutUrl,
   parseRoomKey,
   readPlayerHandoff,
   readRoomKeyFromPlayerUrl,
@@ -37,11 +36,6 @@ describe("handoff URLs", () => {
       roomId: 42,
       roomName: "Room A",
     });
-  });
-
-  it("creates an Apple Shortcuts URL", () => {
-    expect(buildShortcutUrl("room key")).toContain("shortcuts://run-shortcut?");
-    expect(buildShortcutUrl("room key")).toContain("name=SHOWROOM-PiP");
   });
 
   it("builds a player URL that resolves a room without exposing an HLS URL", () => {

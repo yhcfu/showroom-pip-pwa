@@ -31,13 +31,11 @@ label { display: block; margin: 0 0 8px; color: #d7d5dd; font-size: 13px; font-w
 .field-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
 input { width: 100%; min-width: 0; border: 1px solid #343541; border-radius: 12px; outline: none; background: #101118; color: #f6f3fa; padding: 13px 14px; }
 input:focus { border-color: #9e75d8; box-shadow: 0 0 0 3px rgba(158,117,216,.14); }
-button, .action-link { border: 0; border-radius: 12px; cursor: pointer; font-weight: 750; text-decoration: none; text-align: center; padding: 12px 15px; }
-button:focus-visible, .action-link:focus-visible, summary:focus-visible, .help-link:focus-visible, .player-tool:focus-visible { outline: 3px solid rgba(200,162,255,.55); outline-offset: 3px; }
+button { border: 0; border-radius: 12px; cursor: pointer; font-weight: 750; text-decoration: none; text-align: center; padding: 12px 15px; }
+button:focus-visible, summary:focus-visible, .player-tool:focus-visible { outline: 3px solid rgba(200,162,255,.55); outline-offset: 3px; }
 .primary { background: #c8a2ff; color: #15101c; }
 .secondary { background: #292a35; color: #eeeaf4; }
 button:disabled { cursor: not-allowed; opacity: .38; }
-.action-link { display: inline-block; color: #15101c; }
-.full-width { width: 100%; }
 .hint { margin: 8px 2px 0; color: #858590; font-size: 11px; line-height: 1.6; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .flow-section { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 20px 0; border-bottom: 1px solid #2e2f39; }
@@ -48,8 +46,6 @@ button:disabled { cursor: not-allowed; opacity: .38; }
 .step-number { display: grid; place-items: center; align-self: start; width: 25px; height: 25px; border-radius: 50%; background: #30263d; color: #d9c0ff; font-size: 12px; font-weight: 800; }
 .room-row-actions { display: flex; gap: 8px; }
 .quiet-button { border: 1px solid #3a3b46; background: transparent; color: #bbb8c2; font-size: 11px; font-weight: 650; }
-.fallback-hint { margin: 9px 0 0 !important; color: #747580 !important; font-size: 10px !important; }
-.help-link { color: #d5b8ff; font-size: 12px; }
 .next-step { margin: 9px 2px 0 !important; color: #aeadb6 !important; }
 .history-section { padding: 18px 0 20px; }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

@@ -2,19 +2,19 @@
 
 ## 現在の履歴
 
-入力した`room_url_key`は、すぐ端末内へ保存します。Androidではブックマークレット、PCではResolverからPlayerへ渡された`room_id`を正規の識別子として統合します。
+入力した`room_url_key`は、すぐ端末内へ保存します。その後、全端末でResolverからPlayerへ渡された`room_id`を正規の識別子として統合します。
 
 - 最大20件
 - 最近開いた順
 - サーバー送信なし
 - 行の「×」で個別削除
-- Android/PCの通常ブラウザでは、URL keyが変わっても同じroomIdなら重複しない
+- PlayerとPWAがstorageを共有する環境では、URL keyが変わっても同じroomIdなら重複しない
 
-iPhoneのホーム画面Web Appと通常Safariはstorageが分離されます。ShortcutがSafari Playerへ渡したroomIdをPWAへ戻すことはできないため、iOSのPWA履歴はroom keyで重複を除きます。これはサーバーを使わない現在の構成の制約です。
+iPhoneのホーム画面Web Appと通常Safariでstorageが分離される環境では、PWA側の履歴はroom keyで重複を除きます。視聴経路は変わりません。
 
 ## 現在は通知しない
 
-PC向けResolverは画面から要求されたときだけSHOWROOMのstatus APIを読みます。PWAを閉じればページJavaScriptも停止し、Resolverにも定期実行はありません。そのため、現在の構成には配信ポーリング、通知許可、Periodic Background Sync、Web Push登録を含めていません。
+Resolverは画面から要求されたときだけSHOWROOMのstatus APIを読みます。定期実行はありません。PWAを閉じればページJavaScriptも止まるため、現在の構成には配信ポーリング、通知許可、Periodic Background Sync、Web Push登録を含めていません。
 
 ホーム画面追加の案内は、履歴へすぐ戻るためのPWA導線として表示します。通知機能が有効になったという意味ではありません。
 

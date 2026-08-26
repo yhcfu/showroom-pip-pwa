@@ -1,6 +1,6 @@
 # GitHub PagesとResolverへのデプロイ
 
-静的画面はGitHub Pagesへ置きます。PC向けの配信URL解決だけは、Vercel Functionへdeployします。database、定期処理、secret、動画proxyは使いません。Vercel Hobbyの無料枠は個人・非商用利用が対象です。
+静的画面はGitHub Pagesへ置きます。配信URL解決は、全端末から同じVercel Functionへ送ります。databaseや定期処理はありません。secretと動画proxyも不要です。Vercel Hobbyの無料枠は個人・非商用利用が対象です。
 
 ## 1. Resolverをdeployする
 
@@ -47,7 +47,7 @@ PWA:       https://yhcfu.github.io/showroom-pip-pwa/app/
 Player:    https://yhcfu.github.io/showroom-pip-pwa/player/
 ```
 
-公開版には署名済みの[iPhone Shortcut](ios-shortcut.md)を含めます。AndroidはPWAからブックマークレットをコピーし、既存ブックマークのURL欄へ貼り付けます。PCは追加設定をせず、同じGitHub Pages上の動画専用Playerを開きます。iPhoneとAndroidの経路には公開中のPlayer URLが埋め込まれています。
+公開版はPC、iPhone、Androidのすべてで同じ動画専用Playerを開きます。追加の配布物はありません。
 
 ## デプロイしないもの
 
