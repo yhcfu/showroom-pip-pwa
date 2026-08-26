@@ -1,4 +1,4 @@
-const CACHE = "showroom-pip-app-v3";
+const CACHE = "showroom-pip-app-v4";
 const APP_SHELL = ["./", "./manifest.webmanifest", "../icon.svg", "../icon-192.png", "../icon-512.png"];
 
 self.addEventListener("install", (event) => {

@@ -35,3 +35,14 @@ WASMが有効なのは、取得済みデータの解析やcodec処理です。�
 SHOWROOM UIを除いたPlayerには、ブラウザ外でAPIを2回呼ぶ処理だけが必要です。そこでVercel Functionを採用しました。状態保存、動画proxy、定期実行は持たせず、映像帯域もVercelを通しません。
 
 バックグラウンド通知に必要な状態管理と定期実行は、引き続き[サーバーフェーズ](server-phase.md)へ分離します。
+
+## ブラウザ内のL/Rバランス
+
+Web Audio APIの`StereoPannerNode`は、左右定位を連続値で指定できます。Playerでは`HTMLMediaElement`を`createMediaElementSource()`で音声グラフへ取り込み、pannerを経由して出力します。操作はL/Rを表す1本のスライダーです。
+
+- [MDN: Using the Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Using_Web_Audio_API) — media elementを音声グラフへ接続する基本形とstereo pannerの例
+- [Web Audio API specification: MediaElementAudioSourceNode security](https://www.w3.org/TR/webaudio-1.0/#MediaElementAudioSourceNode-security) — cross-origin mediaはCORS許可がない場合に無音を出力する要件
+- [WebKit bug 180696](https://bugs.webkit.org/show_bug.cgi?id=180696) — SafariのHLSを`createMediaElementSource()`へ接続すると無音になる未解決報告
+- [WebKit bug 306493](https://bugs.webkit.org/show_bug.cgi?id=306493) — 新しいSafariでも再現する関連報告
+
+SHOWROOMのHLS CDNが現在の公開Player originへCORS応答を返すことは確認済みです。ただし、配信側の挙動は変わる可能性があります。そのため、L/Rを有効にするのはHLS.js/MSE経路だけです。native HLSを選ぶSafariではUIごと隠します。初期化に失敗しても映像再生は継続し、L/Rだけを無効化します。

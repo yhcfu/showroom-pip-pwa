@@ -13,68 +13,56 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">PERSONAL VIEWER LAUNCHER</p>
         <h1>SHOWROOM <span>PiP</span></h1>
-        <p class="lead">ルームを選ぶだけで、装飾のない専用プレイヤーを開きます。スマートフォンではそのままPiPを使えます。</p>
       </header>
 
       <section class="control-card">
-        <section class="flow-section room-section" aria-labelledby="room-heading">
-          <span class="step-number" aria-hidden="true">1</span>
-          <div class="flow-content">
-            <h2 id="room-heading">配信を見る</h2>
-            <form id="room-form">
-              <label class="sr-only" for="room">SHOWROOMのルームURLまたはroom key</label>
-              <div class="field-row">
-                <input id="room" name="room" inputmode="url" autocomplete="url" placeholder="SHOWROOMのルームURLを貼り付け" required />
-                <button id="open-room-button" class="primary" type="submit">プレイヤーで見る</button>
-              </div>
-            </form>
-            <p class="next-step">全端末で同じ動画専用プレイヤーを開きます。</p>
-          </div>
+        <section class="room-section" aria-label="ルームを開く">
+          <form id="room-form">
+            <label class="sr-only" for="room">SHOWROOMのルームURLまたはroom key</label>
+            <div class="field-row">
+              <input id="room" name="room" inputmode="url" autocomplete="url" placeholder="ルームURL / room key" required />
+              <button id="open-room-button" class="primary" type="submit">開く</button>
+            </div>
+          </form>
         </section>
 
         <section class="history-section" aria-labelledby="history-heading">
           <div class="section-heading">
-            <div>
-              <h2 id="history-heading">最近開いたルーム</h2>
-              <p class="hint">履歴はこの端末内だけに保存されます。</p>
-            </div>
+            <h2 id="history-heading">履歴</h2>
           </div>
           <div id="room-history" class="room-history">
             <p class="history-empty">まだ履歴はありません。</p>
           </div>
         </section>
 
-        <details>
-          <summary>詳細設定</summary>
+        <details class="settings">
+          <summary>設定</summary>
           <div class="details-body">
             <form id="hls-form">
-              <label for="hls-url">HLS master URL</label>
+              <label class="sr-only" for="hls-url">HLS master URL</label>
               <div class="field-row">
-                <input id="hls-url" name="hls-url" inputmode="url" placeholder="https://.../playlist.m3u8" required />
-                <button class="secondary" type="submit">プレイヤーで開く</button>
+                <input id="hls-url" name="hls-url" inputmode="url" placeholder="HLS master URL" required />
+                <button class="secondary" type="submit">開く</button>
               </div>
             </form>
+            <section id="install-guide" class="install-guide" hidden>
+              <div>
+                <strong id="install-title">ホーム画面に追加</strong>
+                <p id="install-summary">履歴へすぐ戻れます。</p>
+              </div>
+              <button id="install-button" class="quiet-button" type="button">手順</button>
+              <ol id="install-steps" hidden>
+                <li>Safariの共有ボタンを押す</li>
+                <li>「ホーム画面に追加」を選ぶ</li>
+                <li>右上の「追加」を押す</li>
+              </ol>
+            </section>
           </div>
         </details>
       </section>
 
-      <section id="install-guide" class="install-guide" hidden>
-        <div>
-          <strong id="install-title">ホーム画面に追加</strong>
-          <p id="install-summary">履歴へすぐ戻れるようにします。</p>
-        </div>
-        <button id="install-button" class="quiet-button" type="button">手順を見る</button>
-        <ol id="install-steps" hidden>
-          <li>Safariの共有ボタンを押す</li>
-          <li>「ホーム画面に追加」を選ぶ</li>
-          <li>右上の「追加」を押す</li>
-        </ol>
-      </section>
-
       <p id="status" class="status" role="status" aria-live="polite" hidden></p>
-      <footer>非公式・個人利用向け。公開中の無料配信だけを対象とし、動画は中継・保存しません。</footer>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,7 +1,8 @@
 import "./style.css";
+import { AUDIO_BALANCE_KEY, clampBalance, formatBalance, parseStoredBalance } from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
 import { resolveRoom } from "./resolver";
-import { buildPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
+import { buildPlayerUrl, buildRoomPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
 
 declare global {
   interface HTMLVideoElement {
@@ -14,6 +15,11 @@ const HISTORY_KEY = "showroom-pip-history-v1";
 const resolverUrl = import.meta.env.VITE_RESOLVER_URL || "";
 const stage = document.querySelector<HTMLElement>(".player-stage")!;
 const video = document.querySelector<HTMLVideoElement>("#video")!;
+const shareButton = document.querySelector<HTMLButtonElement>("#share-button")!;
+const balanceButton = document.querySelector<HTMLButtonElement>("#balance-button")!;
+const balancePanel = document.querySelector<HTMLElement>("#balance-panel")!;
+const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
+const balanceValue = document.querySelector<HTMLOutputElement>("#balance-value")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
 const emptyState = document.querySelector<HTMLElement>("#empty-state")!;
@@ -24,9 +30,16 @@ const appBase = new URL(`${import.meta.env.BASE_URL}app/`, location.origin);
 backToApp.href = appBase.toString();
 
 let hls: import("hls.js").default | null = null;
+let shareUrl: string | null = null;
+let audioContext: AudioContext | null = null;
+let audioSource: MediaElementAudioSourceNode | null = null;
+let stereoPanner: StereoPannerNode | null = null;
+let balanceEnabled = false;
+let copyResetTimer: number | undefined;
 
 function setStatus(message: string, isError = false) {
   status.textContent = message;
+  status.hidden = message.length === 0;
   status.classList.toggle("error", isError);
   emptyState.classList.toggle("error", isError);
   if (isError) emptyMessage.textContent = message;
@@ -36,7 +49,51 @@ function enablePipWhenReady() {
   const standardPip = document.pictureInPictureEnabled && typeof video.requestPictureInPicture === "function";
   const webkitPip = video.webkitSupportsPresentationMode?.("picture-in-picture") === true;
   pipButton.disabled = video.readyState === HTMLMediaElement.HAVE_NOTHING || (!standardPip && !webkitPip);
-  if (!pipButton.disabled) setStatus("準備できました。");
+  setStatus("");
+}
+
+function setBalancePanel(open: boolean) {
+  balancePanel.hidden = !open;
+  balanceButton.setAttribute("aria-expanded", String(open));
+}
+
+function updateBalanceDisplay(value: number) {
+  const balance = clampBalance(value);
+  balanceInput.value = String(balance);
+  balanceValue.value = formatBalance(balance);
+  balanceInput.setAttribute("aria-valuetext", balanceValue.value);
+  balanceButton.setAttribute("aria-label", `左右の音声バランス ${balanceValue.value}`);
+}
+
+function enableAudioBalance() {
+  const supported = typeof AudioContext !== "undefined" &&
+    typeof AudioContext.prototype.createStereoPanner === "function";
+  balanceEnabled = supported;
+  balanceButton.hidden = !supported;
+  if (!supported) setBalancePanel(false);
+  updateBalanceDisplay(parseStoredBalance(localStorage.getItem(AUDIO_BALANCE_KEY)));
+}
+
+async function applyAudioBalance(value: number) {
+  if (!balanceEnabled) return;
+  const balance = clampBalance(value);
+  updateBalanceDisplay(balance);
+  localStorage.setItem(AUDIO_BALANCE_KEY, String(balance));
+  try {
+    if (!audioContext) {
+      audioContext = new AudioContext();
+      audioSource = audioContext.createMediaElementSource(video);
+      stereoPanner = audioContext.createStereoPanner();
+      audioSource.connect(stereoPanner).connect(audioContext.destination);
+    }
+    if (audioContext.state === "suspended") await audioContext.resume();
+    stereoPanner?.pan.setValueAtTime(balance, audioContext.currentTime);
+  } catch {
+    balanceEnabled = false;
+    balanceButton.hidden = true;
+    setBalancePanel(false);
+    setStatus("L/Rを利用できません。", true);
+  }
 }
 
 video.addEventListener("loadedmetadata", enablePipWhenReady);
@@ -67,6 +124,11 @@ async function loadStream(handoff: PlayerHandoff) {
   hls = null;
   emptyState.hidden = true;
   pipButton.disabled = true;
+  shareUrl = handoff.roomKey ? buildRoomPlayerUrl(handoff.roomKey, location.href) : null;
+  shareButton.hidden = shareUrl === null;
+  balanceEnabled = false;
+  balanceButton.hidden = true;
+  setBalancePanel(false);
   setStatus("配信を読み込んでいます…");
 
   if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -74,6 +136,8 @@ async function loadStream(handoff: PlayerHandoff) {
   } else {
     const { default: Hls } = await import("hls.js/light");
     if (!Hls.isSupported()) throw new Error("このブラウザはHLS再生に対応していません。");
+    video.crossOrigin = "anonymous";
+    enableAudioBalance();
     const instance = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
     hls = instance;
     instance.loadSource(handoff.streamUrl);
@@ -94,6 +158,41 @@ async function loadStream(handoff: PlayerHandoff) {
     if (video.readyState !== HTMLMediaElement.HAVE_NOTHING) enablePipWhenReady();
   }
 }
+
+shareButton.addEventListener("click", async () => {
+  if (!shareUrl) return;
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    window.clearTimeout(copyResetTimer);
+    shareButton.textContent = "✓";
+    copyResetTimer = window.setTimeout(() => {
+      shareButton.textContent = "URL";
+    }, 1200);
+  } catch {
+    setStatus("URLをコピーできませんでした。", true);
+  }
+});
+
+balanceButton.addEventListener("click", () => {
+  const open = balancePanel.hidden;
+  setBalancePanel(open);
+  if (open) void applyAudioBalance(Number(balanceInput.value));
+});
+
+balanceInput.addEventListener("input", () => {
+  void applyAudioBalance(Number(balanceInput.value));
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setBalancePanel(false);
+});
+
+document.addEventListener("pointerdown", (event) => {
+  const target = event.target;
+  if (target instanceof Node && !balancePanel.contains(target) && !balanceButton.contains(target)) {
+    setBalancePanel(false);
+  }
+});
 
 pipButton.addEventListener("click", async () => {
   try {
@@ -121,10 +220,12 @@ fullscreenButton.addEventListener("click", async () => {
 });
 
 document.addEventListener("fullscreenchange", () => {
-  fullscreenButton.textContent = document.fullscreenElement ? "全画面を終了" : "全画面";
+  fullscreenButton.textContent = document.fullscreenElement ? "×" : "⛶";
+  fullscreenButton.setAttribute("aria-label", document.fullscreenElement ? "全画面を終了" : "全画面");
 });
 
 if (typeof video.requestFullscreen !== "function") fullscreenButton.hidden = true;
+fullscreenButton.setAttribute("aria-label", "全画面");
 
 try {
   const handoff = readPlayerHandoff(location.hash);

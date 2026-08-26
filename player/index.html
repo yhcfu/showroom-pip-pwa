@@ -19,8 +19,17 @@
         <a id="back-to-app" class="player-tool" href="../app/">← 履歴</a>
         <p id="status" class="player-status" role="status" aria-live="polite">リンクを確認中…</p>
         <div class="player-tools">
+          <button id="share-button" class="player-tool" type="button" aria-label="共有URLをコピー" hidden>URL</button>
+          <button id="balance-button" class="player-tool" type="button" aria-expanded="false" aria-controls="balance-panel" hidden>L/R</button>
           <button id="pip-button" class="player-tool" type="button" disabled>PiP</button>
-          <button id="fullscreen-button" class="player-tool" type="button">全画面</button>
+          <button id="fullscreen-button" class="player-tool" type="button">⛶</button>
+        </div>
+        <div id="balance-panel" class="balance-panel" hidden>
+          <label class="sr-only" for="balance">左右の音声バランス</label>
+          <span aria-hidden="true">L</span>
+          <input id="balance" type="range" min="-1" max="1" step="0.01" value="0" />
+          <span aria-hidden="true">R</span>
+          <output id="balance-value" for="balance">C</output>
         </div>
       </div>
     </main>

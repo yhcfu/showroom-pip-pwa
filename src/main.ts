@@ -1,5 +1,5 @@
 import "./style.css";
-import { parseRoomHistory, upsertRoomHistory, type RoomHistoryEntry } from "./history";
+import { parseRoomHistory, setRoomPinned, upsertRoomHistory, type RoomHistoryEntry } from "./history";
 import { detectPlatform } from "./platform";
 import { buildPlayerUrl, buildRoomPlayerUrl, parseRoomKey, readPlayerHandoff } from "./showroom";
 
@@ -13,7 +13,6 @@ const roomForm = document.querySelector<HTMLFormElement>("#room-form")!;
 const hlsForm = document.querySelector<HTMLFormElement>("#hls-form")!;
 const roomInput = document.querySelector<HTMLInputElement>("#room")!;
 const hlsInput = document.querySelector<HTMLInputElement>("#hls-url")!;
-const openRoomButton = document.querySelector<HTMLButtonElement>("#open-room-button")!;
 const historyContainer = document.querySelector<HTMLElement>("#room-history")!;
 const installGuide = document.querySelector<HTMLElement>("#install-guide")!;
 const installTitle = document.querySelector<HTMLElement>("#install-title")!;
@@ -95,10 +94,24 @@ function renderHistory() {
     const actions = document.createElement("div");
     actions.className = "room-row-actions";
 
+    const pin = document.createElement("button");
+    pin.type = "button";
+    pin.className = "room-pin";
+    pin.textContent = "📌";
+    pin.title = room.pinnedAt === undefined ? "固定" : "固定を解除";
+    pin.setAttribute("aria-label", `${roomLabel}の${pin.title}`);
+    pin.setAttribute("aria-pressed", String(room.pinnedAt !== undefined));
+    pin.addEventListener("click", () => {
+      historyEntries = parseRoomHistory(localStorage.getItem(HISTORY_KEY));
+      historyEntries = setRoomPinned(historyEntries, room, room.pinnedAt === undefined);
+      persistHistory();
+    });
+    actions.append(pin);
+
     const open = document.createElement("button");
     open.type = "button";
     open.className = "room-open";
-    open.textContent = "見る";
+    open.textContent = "▶";
     open.setAttribute("aria-label", `${roomLabel}を見る`);
     open.addEventListener("click", () => openRoom(room.roomKey));
     actions.append(open);
@@ -130,7 +143,7 @@ function setupInstallGuide() {
     installGuide.hidden = false;
     installButton.addEventListener("click", () => {
       installSteps.hidden = !installSteps.hidden;
-      installButton.textContent = installSteps.hidden ? "追加手順を見る" : "手順を閉じる";
+      installButton.textContent = installSteps.hidden ? "手順" : "閉じる";
     });
     return;
   }
@@ -195,7 +208,6 @@ try {
       const roomKey = parseRoomKey(requestedRoom);
       selectRoom(roomKey);
       rememberRoom(roomKey);
-      setStatus(`${roomKey}を入力しました。「${openRoomButton.textContent}」を押してください。`);
     }
   }
 } catch (error) {
