@@ -10,6 +10,14 @@ import {
 } from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
 import { LIVE_HLS_CONFIG } from "./live-playback";
+import {
+  buildBufferSessionKey,
+  createPersistentFragmentLoader,
+  findReplayMarker,
+  PersistentBufferStore,
+  type ReplayPlan,
+  type ResumeMarker,
+} from "./persistent-buffer";
 import { PLAYER_CONTROLS_IDLE_MS, shouldKeepPlayerControlsVisible } from "./player-controls";
 import { resolveRoom } from "./resolver";
 import { buildScreenshotFilename, copyPngToClipboard, shouldCaptureFromShortcut } from "./screenshot";
@@ -36,6 +44,7 @@ const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
 const balanceValue = document.querySelector<HTMLOutputElement>("#balance-value")!;
 const screenshotButton = document.querySelector<HTMLButtonElement>("#screenshot-button")!;
 const screenshotLabel = document.querySelector<HTMLElement>("#screenshot-label")!;
+const liveButton = document.querySelector<HTMLButtonElement>("#live-button")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
 const pipLabel = document.querySelector<HTMLElement>("#pip-label")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
@@ -58,6 +67,17 @@ let balanceEnabled = false;
 let copyResetTimer: number | undefined;
 let screenshotStatusTimer: number | undefined;
 let controlsIdleTimer: number | undefined;
+let bufferStore: PersistentBufferStore | null = null;
+let bufferSessionKey: string | null = null;
+let replayPlan: ReplayPlan | null = null;
+let replayManifestUrl: string | null = null;
+let currentLiveFragment: import("hls.js").Fragment | null = null;
+let replaying = false;
+let switchingToLive = false;
+let lastResumeSaveAt = 0;
+let keyboardNavigation = false;
+
+const RESUME_MARKER_PREFIX = "showroom-pip-resume-v1:";
 
 function isDesktopChromium(): boolean {
   return finePointerQuery.matches && isChromiumUserAgent(navigator.userAgent);
@@ -73,7 +93,7 @@ function keepControlsVisible(): boolean {
     finePointer: finePointerQuery.matches,
     playing: stage.classList.contains("playing"),
     buffering: stage.classList.contains("buffering"),
-    focusWithin: overlay.matches(":focus-within"),
+    keyboardFocusWithin: keyboardNavigation && overlay.matches(":focus-within"),
     panelOpen: !balancePanel.hidden,
     blockingStatus: !status.hidden && status.classList.contains("error"),
   });
@@ -96,6 +116,46 @@ function setStatus(message: string, isError = false) {
   emptyState.classList.toggle("error", isError);
   if (isError) emptyMessage.textContent = message;
   if (isError) revealControls(false);
+}
+
+function readResumeMarker(sessionKey: string): ResumeMarker | null {
+  try {
+    const storageKey = `${RESUME_MARKER_PREFIX}${sessionKey}`;
+    const value = JSON.parse(localStorage.getItem(storageKey) ?? "null") as Partial<ResumeMarker> | null;
+    if (!value || !Number.isInteger(value.level) || !Number.isInteger(value.sequence) || !Number.isFinite(value.offset) || !Number.isFinite(value.savedAt)) return null;
+    if (Date.now() - Number(value.savedAt) > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(storageKey);
+      return null;
+    }
+    return value as ResumeMarker;
+  } catch {
+    return null;
+  }
+}
+
+function writeResumeMarker(force = false) {
+  if (!bufferSessionKey) return;
+  const now = Date.now();
+  if (!force && now - lastResumeSaveAt < 1000) return;
+  let marker: ResumeMarker | null = null;
+  if (replaying && replayPlan) {
+    marker = findReplayMarker(replayPlan, video.currentTime);
+  } else if (currentLiveFragment && typeof currentLiveFragment.sn === "number") {
+    marker = {
+      level: currentLiveFragment.level,
+      sequence: currentLiveFragment.sn,
+      offset: Math.max(0, Math.min(currentLiveFragment.duration, video.currentTime - currentLiveFragment.start)),
+      savedAt: now,
+    };
+  }
+  if (!marker) return;
+  marker.savedAt = now;
+  try {
+    localStorage.setItem(`${RESUME_MARKER_PREFIX}${bufferSessionKey}`, JSON.stringify(marker));
+    lastResumeSaveAt = now;
+  } catch {
+    // Playback remains usable when private mode or quota policy blocks local storage.
+  }
 }
 
 function enablePipWhenReady() {
@@ -273,13 +333,26 @@ video.addEventListener("canplay", () => {
   stage.classList.remove("buffering");
   revealControls(!video.paused);
 });
-
-stage.addEventListener("pointermove", () => revealControls(), { passive: true });
-stage.addEventListener("pointerdown", () => revealControls(), { passive: true });
-stage.addEventListener("focusin", (event) => {
-  const target = event.target;
-  revealControls(!(target instanceof Node && overlay.contains(target)));
+video.addEventListener("timeupdate", () => {
+  writeResumeMarker();
+  if (replaying && Number.isFinite(video.duration) && video.duration > 0 && video.currentTime >= video.duration - 0.75) {
+    void startLivePlayback();
+  }
 });
+video.addEventListener("ended", () => {
+  if (replaying) void startLivePlayback();
+});
+window.addEventListener("pagehide", () => writeResumeMarker(true));
+
+function revealFromPointer() {
+  keyboardNavigation = false;
+  stage.classList.remove("keyboard-navigation");
+  revealControls();
+}
+
+stage.addEventListener("pointermove", revealFromPointer, { passive: true });
+stage.addEventListener("pointerdown", revealFromPointer, { passive: true });
+stage.addEventListener("focusin", () => revealControls());
 stage.addEventListener("focusout", () => queueMicrotask(() => revealControls()));
 window.addEventListener("focus", () => revealControls());
 finePointerQuery.addEventListener("change", () => revealControls());
@@ -296,9 +369,99 @@ function rememberHandoff(handoff: PlayerHandoff) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
 
+function releaseReplayManifest() {
+  if (!replayManifestUrl) return;
+  URL.revokeObjectURL(replayManifestUrl);
+  replayManifestUrl = null;
+}
+
+async function playCurrentMedia() {
+  try {
+    await video.play();
+  } catch {
+    if (video.readyState !== HTMLMediaElement.HAVE_NOTHING) enablePipWhenReady();
+  }
+}
+
+async function startLivePlayback() {
+  if (!bufferStore || !currentHandoff || switchingToLive) return;
+  switchingToLive = true;
+  writeResumeMarker(true);
+  replaying = false;
+  replayPlan = null;
+  liveButton.hidden = true;
+  currentLiveFragment = null;
+  releaseReplayManifest();
+  hls?.destroy();
+  hls = null;
+  setStatus("ライブへ接続しています…");
+  try {
+    const { default: Hls } = await import("hls.js/light");
+    const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
+    const instance = new Hls({ ...LIVE_HLS_CONFIG, fLoader: FragmentLoader });
+    hls = instance;
+    instance.on(Hls.Events.FRAG_CHANGED, (_event, data) => {
+      currentLiveFragment = data.frag;
+      writeResumeMarker();
+    });
+    instance.on(Hls.Events.ERROR, (_event, data) => {
+      if (data.fatal) {
+        pipButton.disabled = true;
+        setStatus(`HLS再生エラー: ${data.details}`, true);
+      }
+    });
+    instance.loadSource(currentHandoff.streamUrl);
+    instance.attachMedia(video);
+    await playCurrentMedia();
+  } finally {
+    switchingToLive = false;
+  }
+}
+
+let currentHandoff: PlayerHandoff | null = null;
+
+async function startPersistentPlayback(handoff: PlayerHandoff, Hls: typeof import("hls.js").default) {
+  const sessionKey = buildBufferSessionKey(handoff.roomKey, handoff.streamUrl);
+  bufferSessionKey = sessionKey;
+  bufferStore = new PersistentBufferStore(sessionKey, handoff.streamUrl, handoff.roomKey);
+  const marker = readResumeMarker(sessionKey);
+  const restored = marker ? await bufferStore.replay(marker, location.origin).catch(() => null) : null;
+  if (!restored) {
+    await startLivePlayback();
+    return;
+  }
+
+  replaying = true;
+  replayPlan = restored;
+  liveButton.hidden = false;
+  setStatus("前回位置から再開しています");
+  replayManifestUrl = URL.createObjectURL(new Blob([restored.playlist], { type: "application/vnd.apple.mpegurl" }));
+  const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
+  const instance = new Hls({
+    ...LIVE_HLS_CONFIG,
+    fLoader: FragmentLoader,
+    startPosition: restored.startPosition,
+    lowLatencyMode: false,
+  });
+  hls = instance;
+  instance.on(Hls.Events.ERROR, (_event, data) => {
+    if (data.fatal && replaying) void startLivePlayback();
+  });
+  instance.loadSource(replayManifestUrl);
+  instance.attachMedia(video);
+  await playCurrentMedia();
+}
+
 async function loadStream(handoff: PlayerHandoff) {
   hls?.destroy();
   hls = null;
+  releaseReplayManifest();
+  currentHandoff = handoff;
+  bufferStore = null;
+  bufferSessionKey = null;
+  replaying = false;
+  replayPlan = null;
+  liveButton.hidden = true;
   emptyState.hidden = true;
   pipButton.disabled = true;
   screenshotButton.disabled = true;
@@ -317,16 +480,7 @@ async function loadStream(handoff: PlayerHandoff) {
     if (Hls.isSupported()) {
       video.crossOrigin = "anonymous";
       enableAudioBalance();
-      const instance = new Hls(LIVE_HLS_CONFIG);
-      hls = instance;
-      instance.loadSource(handoff.streamUrl);
-      instance.attachMedia(video);
-      instance.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          pipButton.disabled = true;
-          setStatus(`HLS再生エラー: ${data.details}`, true);
-        }
-      });
+      await startPersistentPlayback(handoff, Hls);
     } else if (nativeHls) {
       video.src = handoff.streamUrl;
     } else {
@@ -338,12 +492,12 @@ async function loadStream(handoff: PlayerHandoff) {
 
   rememberHandoff(handoff);
   history.replaceState(null, "", buildPlayerUrl(handoff.streamUrl, location.href, handoff));
-  try {
-    await video.play();
-  } catch {
-    if (video.readyState !== HTMLMediaElement.HAVE_NOTHING) enablePipWhenReady();
-  }
+  if (!hls) await playCurrentMedia();
 }
+
+liveButton.addEventListener("click", () => {
+  void startLivePlayback();
+});
 
 shareButton.addEventListener("click", async () => {
   if (!shareUrl) return;
@@ -380,6 +534,8 @@ balanceInput.addEventListener("input", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  keyboardNavigation = true;
+  stage.classList.add("keyboard-navigation");
   revealControls();
   if (event.key === "Escape") setBalancePanel(false);
   const target = event.target;

@@ -34,8 +34,14 @@ iPhoneのホーム画面Web AppとSafariのstorageが分離される環境では
 
 PC Chrome/Edgeでは、OSがnative HLSを提供する場合もHLS.js/MSEを優先します。利用者が`L/R`を操作した時だけ`AudioContext`を作り、`MediaElementAudioSourceNode → StereoPannerNode → destination`へ接続します。値は端末内へ保存します。スマートフォンではL/Rを提供しません。SafariはWebKitの既知問題を避けるためnative HLSを使い、UIも表示しません。
 
-HLS.jsのback bufferには時間制限を設けません。視聴開始後に読み込んだsegmentを、ブラウザが保持できる範囲で残します。live latencyによるlive edgeへの強制seekも無効です。保持済みsegmentにはシークバーから戻れます。ページを開く前のsegmentやブラウザが破棄したsegmentは復元しません。Safariのnative HLSはこの設定の対象外です。
+HLS.jsのback bufferには時間制限を設けません。media fragmentはIndexedDBにも複製します。再生位置は`localStorage`へ同期します。
 
-スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ね、再生中にポインター・キーボード入力が2.5秒なければ隠します。入力時は即座に戻し、一時停止中、バッファリング中、ツールへのフォーカス中、L/Rパネルの表示中、エラー表示中は隠しません。
+リロード時は、保存位置を含む連続segmentから一時的なVOD playlistを組み立てます。保存位置から再生し、その区間が終われば現在のlive HLSへ自動接続します。途中で戻る場合は`ライブへ戻る`を使えます。
+
+端末内bufferの保持期限は24時間、希望上限は1 GiBです。空き容量が少ない端末では、`StorageManager.estimate()`を使って上限を縮めます。期限切れまたは古いsegmentから削除します。
+
+映像payloadとmetadataは別object storeへ置きます。そのため、容量整理の際に全映像をメモリへ展開しません。暗号化fragment、部分fragment、連続性を確認できない区間は復元対象外です。Safariのnative HLSも対象外です。
+
+スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ね、再生中にポインター・キーボード入力が2秒なければ隠します。入力時は即座に戻します。マウスクリックでボタンにフォーカスが残っても表示を固定しません。一時停止中、バッファリング中、キーボードでツールへフォーカスしている間、L/Rパネルの表示中、エラー表示中は隠しません。
 
 映像はSHOWROOMのCDNから端末へ直接流れます。GitHub PagesとVercel Resolverは映像を中継しません。

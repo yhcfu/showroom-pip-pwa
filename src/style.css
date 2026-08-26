@@ -88,7 +88,7 @@ summary { cursor: pointer; color: #858590; font-size: 11px; }
   .player-tool:not(:disabled):active { transform: translateY(1px); }
   .player-stage.playing.controls-idle { cursor: none; }
   .player-stage.playing.controls-idle .player-overlay { pointer-events: none; opacity: 0; }
-  .player-stage.playing.controls-idle .player-overlay:focus-within { pointer-events: auto; opacity: 1; }
+  .player-stage.playing.controls-idle.keyboard-navigation .player-overlay:focus-within { pointer-events: auto; opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

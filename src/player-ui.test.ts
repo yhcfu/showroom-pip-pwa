@@ -6,11 +6,12 @@ const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
 const player = readFileSync(new URL("./player.ts", import.meta.url), "utf8");
 
 describe("player tools", () => {
-  it("provides compact share, balance, screenshot, PiP, and fullscreen controls", () => {
+  it("provides compact share, balance, screenshot, live, PiP, and fullscreen controls", () => {
     expect(html).toContain('id="share-button"');
     expect(html).toContain('id="balance-button"');
     expect(html).toContain('id="balance-panel"');
     expect(html).toContain('id="screenshot-button"');
+    expect(html).toContain('id="live-button"');
     expect(html).toContain('aria-keyshortcuts="S"');
     expect(html).toContain('id="pip-button"');
     expect(html).toContain('id="fullscreen-button"');
@@ -19,6 +20,7 @@ describe("player tools", () => {
     expect(html).toContain('class="tool-icon success-icon"');
     expect(html).toContain('class="tool-label">L/R</span>');
     expect(html).toContain('id="screenshot-label" class="tool-label">撮影</span>');
+    expect(html).toContain('class="tool-label">ライブ</span>');
     expect(html).toContain('id="pip-label" class="tool-label">PiP</span>');
     expect(html).toContain('id="fullscreen-label" class="tool-label">全画面</span>');
   });
@@ -41,14 +43,18 @@ describe("player tools", () => {
   });
 
   it("uses the rewind-preserving live HLS configuration", () => {
-    expect(player).toContain("new Hls(LIVE_HLS_CONFIG)");
+    expect(player).toContain("createPersistentFragmentLoader");
+    expect(player).toContain("startPosition: restored.startPosition");
+    expect(player).toContain('liveButton.addEventListener("click"');
   });
 
   it("reveals desktop tools from activity and hides them independently of hover", () => {
     expect(player).toContain('stage.addEventListener("pointermove"');
     expect(player).toContain('document.addEventListener("keydown"');
+    expect(player).toContain('stage.classList.remove("keyboard-navigation")');
+    expect(player).toContain('stage.classList.add("keyboard-navigation")');
     expect(css).toContain(".player-stage.playing.controls-idle .player-overlay");
-    expect(css).toContain(".player-overlay:focus-within");
+    expect(css).toContain(".player-stage.playing.controls-idle.keyboard-navigation .player-overlay:focus-within");
     expect(css).not.toContain(".player-stage.playing:not(:hover):not(:focus-within)");
   });
 

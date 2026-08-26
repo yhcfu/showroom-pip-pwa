@@ -10,7 +10,7 @@
 - PCではウィンドウ追従表示とFullscreen APIによる全画面を主な表示方法とする。ブラウザが対応する場合はPiPボタンも利用できる。
 - L/Rバランスはfine pointerを持ち、HLS.jsとWeb Audio APIを使えるPC Chrome/Edgeだけに表示する。これらのブラウザではOSのnative HLSよりHLS.jsを優先する。スマートフォンは対象外。Safariは`MediaElementAudioSourceNode`へ接続すると無音になる既知のWebKit問題があるため対象外。
 - L/Rバランスはページ内のPlayer音声だけを変更する。OSや他タブの音声には影響しない。
-- HLS.js経路では視聴後の映像をback bufferへ保持する。保持量はブラウザのメモリ管理に依存し、ページを開く前の映像には戻れない。Safariのnative HLSで巻き戻せる範囲は、配信側のplaylistとブラウザに依存する。
+- HLS.js経路では取得済み映像を端末内へ最長24時間保持し、リロード後も保存位置から再開する。希望上限は1 GiBだが、ブラウザquotaに合わせて縮小する。容量不足、storage消去、欠損、暗号化、配信URL変更時は通常のlive再生へ戻る。Safariのnative HLSは対象外。
 - 現在のResolverは要求時のURL解決だけを行うため、配信開始の自動検知と通知はできない。
 - 配信終了、room key誤り、限定・有料配信、地域制限には対応しない。
 - 非公開APIのfield名やendpointが変われば修正が必要になる。
@@ -24,7 +24,7 @@
 次の用途には使わないでください。
 
 - HLS URLを第三者へ配布する
-- 映像を録画、保存、再配信する
+- 端末内の一時bufferを録画ファイルとして取り出す、または映像を再配信する
 - 限定・有料配信の制限を回避する
 - SHOWROOMのCookieやsessionを外部へ送る
 
