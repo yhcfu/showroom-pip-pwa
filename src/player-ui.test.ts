@@ -11,6 +11,19 @@ describe("player tools", () => {
     expect(html).toContain('id="balance-panel"');
     expect(html).toContain('id="pip-button"');
     expect(html).toContain('id="fullscreen-button"');
+    expect(html).toContain('class="player-tool icon-tool"');
+    expect(html).toContain('class="tool-icon default-icon"');
+    expect(html).toContain('class="tool-icon success-icon"');
+    expect(html).toContain('class="tool-label">L/R</span>');
+    expect(html).toContain('class="tool-label">PiP</span>');
+  });
+
+  it("keeps icon actions named while hiding their labels on compact touch layouts", () => {
+    expect(html).toContain('aria-label="共有URLをコピー"');
+    expect(html).toContain('aria-label="左右の音声バランス"');
+    expect(html).toContain('aria-label="ピクチャーインピクチャー"');
+    expect(css).toContain(".player-tool[hidden] { display: none; }");
+    expect(css).toContain(".icon-tool .tool-label { display: none; }");
   });
 
   it("separates custom tools from native video controls on touch devices", () => {

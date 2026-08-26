@@ -24,6 +24,7 @@ const resolverUrl = import.meta.env.VITE_RESOLVER_URL || "";
 const stage = document.querySelector<HTMLElement>(".player-stage")!;
 const video = document.querySelector<HTMLVideoElement>("#video")!;
 const shareButton = document.querySelector<HTMLButtonElement>("#share-button")!;
+const shareLabel = document.querySelector<HTMLElement>("#share-label")!;
 const balanceButton = document.querySelector<HTMLButtonElement>("#balance-button")!;
 const balancePanel = document.querySelector<HTMLElement>("#balance-panel")!;
 const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
@@ -74,7 +75,9 @@ function updateBalanceDisplay(value: number) {
   balanceInput.value = String(balance);
   balanceValue.value = formatBalance(balance);
   balanceInput.setAttribute("aria-valuetext", balanceValue.value);
-  balanceButton.setAttribute("aria-label", `左右の音声バランス ${balanceValue.value}`);
+  const accessibleLabel = `左右の音声バランス ${balanceValue.value}`;
+  balanceButton.setAttribute("aria-label", accessibleLabel);
+  balanceButton.title = accessibleLabel;
 }
 
 function enableAudioBalance() {
@@ -193,9 +196,15 @@ shareButton.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(shareUrl);
     window.clearTimeout(copyResetTimer);
-    shareButton.textContent = "✓";
+    shareButton.classList.add("is-success");
+    shareButton.setAttribute("aria-label", "共有URLをコピーしました");
+    shareButton.title = "共有URLをコピーしました";
+    shareLabel.textContent = "コピー済み";
     copyResetTimer = window.setTimeout(() => {
-      shareButton.textContent = "URL";
+      shareButton.classList.remove("is-success");
+      shareButton.setAttribute("aria-label", "共有URLをコピー");
+      shareButton.title = "共有URLをコピー";
+      shareLabel.textContent = "URL";
     }, 1200);
   } catch {
     setStatus("URLをコピーできませんでした。", true);

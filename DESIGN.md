@@ -48,7 +48,7 @@
 - Spacing/layout rhythm: 8px base rhythm; one compact surface; dividers instead of nested cards
 - Shape/radius/elevation: 12–18px radii; minimal shadow; no glass panels for ordinary sections
 - Motion: a small loading pulse and auto-hiding player overlay; honor reduced-motion preferences
-- Imagery/iconography: short text controls and familiar symbols with accessible names; no illustrative assets
+- Imagery/iconography: player actions use familiar inline SVG icons with accessible names; desktop pairs icons with short labels, while compact touch layouts show icons only; no illustrative assets or icon-library dependency
 
 ## Components
 
@@ -68,7 +68,7 @@
 ## Responsive behavior
 
 - Supported breakpoints/devices: desktop Chrome/Edge, Android Chrome, current iPhone Safari/PWA
-- Layout adaptations: the launcher stays compact on narrow screens; the player fills the visual viewport and letterboxes video without cropping; touch devices reserve one compact row for project controls above the native video surface
+- Layout adaptations: the launcher stays compact on narrow screens; the player fills the visual viewport and letterboxes video without cropping; touch devices reserve one compact row for icon-only project controls above the native video surface
 - Touch/hover differences: touch devices keep the custom toolbar outside the `<video controls>` box so native media controls cannot overlap it; hover-capable devices retain the auto-hiding overlay
 
 ## Interaction states
