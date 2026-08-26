@@ -1,5 +1,13 @@
 import "./style.css";
-import { AUDIO_BALANCE_KEY, clampBalance, formatBalance, parseStoredBalance } from "./audio-balance";
+import {
+  AUDIO_BALANCE_KEY,
+  DESKTOP_AUDIO_BALANCE_QUERY,
+  clampBalance,
+  formatBalance,
+  isChromiumUserAgent,
+  parseStoredBalance,
+  shouldOfferAudioBalance,
+} from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
 import { resolveRoom } from "./resolver";
 import { buildPlayerUrl, buildRoomPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
@@ -37,6 +45,10 @@ let stereoPanner: StereoPannerNode | null = null;
 let balanceEnabled = false;
 let copyResetTimer: number | undefined;
 
+function isDesktopChromium(): boolean {
+  return matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches && isChromiumUserAgent(navigator.userAgent);
+}
+
 function setStatus(message: string, isError = false) {
   status.textContent = message;
   status.hidden = message.length === 0;
@@ -66,8 +78,13 @@ function updateBalanceDisplay(value: number) {
 }
 
 function enableAudioBalance() {
-  const supported = typeof AudioContext !== "undefined" &&
-    typeof AudioContext.prototype.createStereoPanner === "function";
+  const hasAudioContext = typeof AudioContext !== "undefined";
+  const supported = shouldOfferAudioBalance({
+    desktopPointer: matchMedia(DESKTOP_AUDIO_BALANCE_QUERY).matches,
+    chromium: isChromiumUserAgent(navigator.userAgent),
+    audioContext: hasAudioContext,
+    stereoPanner: hasAudioContext && typeof AudioContext.prototype.createStereoPanner === "function",
+  });
   balanceEnabled = supported;
   balanceButton.hidden = !supported;
   if (!supported) setBalancePanel(false);
@@ -86,10 +103,15 @@ async function applyAudioBalance(value: number) {
       stereoPanner = audioContext.createStereoPanner();
       audioSource.connect(stereoPanner).connect(audioContext.destination);
     }
+    if (!stereoPanner) throw new Error("StereoPannerNodeを初期化できませんでした。");
+    stereoPanner.pan.value = balance;
     if (audioContext.state === "suspended") await audioContext.resume();
-    stereoPanner?.pan.setValueAtTime(balance, audioContext.currentTime);
+    balanceButton.dataset.audioState = "active";
+    balanceInput.dataset.appliedValue = String(stereoPanner.pan.value);
   } catch {
     balanceEnabled = false;
+    delete balanceButton.dataset.audioState;
+    delete balanceInput.dataset.appliedValue;
     balanceButton.hidden = true;
     setBalancePanel(false);
     setStatus("L/Rを利用できません。", true);
@@ -131,23 +153,30 @@ async function loadStream(handoff: PlayerHandoff) {
   setBalancePanel(false);
   setStatus("配信を読み込んでいます…");
 
-  if (video.canPlayType("application/vnd.apple.mpegurl")) {
-    video.src = handoff.streamUrl;
-  } else {
+  const nativeHls = Boolean(video.canPlayType("application/vnd.apple.mpegurl"));
+  const preferHlsJs = isDesktopChromium();
+  if (!nativeHls || preferHlsJs) {
     const { default: Hls } = await import("hls.js/light");
-    if (!Hls.isSupported()) throw new Error("このブラウザはHLS再生に対応していません。");
-    video.crossOrigin = "anonymous";
-    enableAudioBalance();
-    const instance = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
-    hls = instance;
-    instance.loadSource(handoff.streamUrl);
-    instance.attachMedia(video);
-    instance.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal) {
-        pipButton.disabled = true;
-        setStatus(`HLS再生エラー: ${data.details}`, true);
-      }
-    });
+    if (Hls.isSupported()) {
+      video.crossOrigin = "anonymous";
+      enableAudioBalance();
+      const instance = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
+      hls = instance;
+      instance.loadSource(handoff.streamUrl);
+      instance.attachMedia(video);
+      instance.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          pipButton.disabled = true;
+          setStatus(`HLS再生エラー: ${data.details}`, true);
+        }
+      });
+    } else if (nativeHls) {
+      video.src = handoff.streamUrl;
+    } else {
+      throw new Error("このブラウザはHLS再生に対応していません。");
+    }
+  } else {
+    video.src = handoff.streamUrl;
   }
 
   rememberHandoff(handoff);

@@ -45,4 +45,4 @@ Web Audio APIの`StereoPannerNode`は、左右定位を連続値で指定でき�
 - [WebKit bug 180696](https://bugs.webkit.org/show_bug.cgi?id=180696) — SafariのHLSを`createMediaElementSource()`へ接続すると無音になる未解決報告
 - [WebKit bug 306493](https://bugs.webkit.org/show_bug.cgi?id=306493) — 新しいSafariでも再現する関連報告
 
-SHOWROOMのHLS CDNが現在の公開Player originへCORS応答を返すことは確認済みです。ただし、配信側の挙動は変わる可能性があります。そのため、L/Rを有効にするのはHLS.js/MSE経路だけです。native HLSを選ぶSafariではUIごと隠します。初期化に失敗しても映像再生は継続し、L/Rだけを無効化します。
+SHOWROOMのHLS CDNが現在の公開Player originへCORS応答を返すことは確認済みです。ただし、配信側の挙動は変わる可能性があります。そのため、L/Rを有効にするのはfine pointerを持つPCのHLS.js/MSE経路だけです。スマートフォンとnative HLSを選ぶSafariではUIごと隠します。初期化に失敗しても映像再生は継続し、L/Rだけを無効化します。

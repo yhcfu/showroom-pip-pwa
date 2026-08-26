@@ -37,7 +37,7 @@
 - Design for repeat use: remove explanations that no longer help after the first successful playback; retain accessible names and a compact settings escape hatch
 - Use one playback path: every platform opens `/player/?room=...`, which resolves and plays the stream
 - Make video the destination: navigation stays on the project's Player, never the decorated SHOWROOM page
-- Keep tools contextual: share is available only for a stable room URL, and L/R balance only where the playback pipeline can support Web Audio safely
+- Keep tools contextual: share is available only for a stable room URL, and L/R balance only on a pointer-based PC where the playback pipeline can support Web Audio safely
 - Keep infrastructure narrow: the resolver returns live metadata and the public HLS URL; media travels directly from SHOWROOM's CDN to the browser
 - Tradeoffs: all playback depends on a small stateless resolver; iOS Home Screen PiP still relies on `/player/` remaining outside the installed `/app/` scope
 
@@ -54,7 +54,7 @@
 
 - Existing components to reuse: room form, history rows, collapsed settings, player controls
 - New/changed components: pinned history action, clean share-URL action, conditional L/R balance panel, full-viewport video stage
-- Variants and states: playback stays identical across devices; installation guidance and Web Audio balance appear only when supported
+- Variants and states: playback stays identical across devices; installation guidance differs by install capability; Web Audio balance is a PC-only enhancement
 - Token/component ownership: `src/style.css` owns the small local visual system
 
 ## Accessibility
@@ -68,8 +68,8 @@
 ## Responsive behavior
 
 - Supported breakpoints/devices: desktop Chrome/Edge, Android Chrome, current iPhone Safari/PWA
-- Layout adaptations: the launcher stacks on narrow screens; the player always fills the visual viewport and letterboxes video without cropping
-- Touch/hover differences: the overlay remains available on touch devices and auto-hides while playing on hover-capable devices; player tools use compact tap targets and an anchored L/R panel
+- Layout adaptations: the launcher stays compact on narrow screens; the player fills the visual viewport and letterboxes video without cropping; touch devices reserve one compact row for project controls above the native video surface
+- Touch/hover differences: touch devices keep the custom toolbar outside the `<video controls>` box so native media controls cannot overlap it; hover-capable devices retain the auto-hiding overlay
 
 ## Interaction states
 
@@ -91,7 +91,7 @@
 - Framework/styling system: Vite, TypeScript, plain HTML/CSS
 - Design-token constraints: extend current local colors and radii; do not add a component library
 - Performance constraints: no new runtime dependency; media never passes through the resolver; create the Web Audio graph only after an explicit L/R interaction
-- Compatibility constraints: the PWA stays on GitHub Pages; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope; L/R balance is limited to the HLS.js/MSE path and hidden for Safari native HLS because of open WebKit media-source bugs
+- Compatibility constraints: the PWA stays on GitHub Pages; one Vercel Function resolves live metadata for every platform; `/player/` remains outside the installed `/app/` scope; fine-pointer Chrome/Edge prefer HLS.js/MSE so L/R remains available even when the OS offers native HLS; mobile and Safari stay on native HLS without L/R; custom and native media controls must use separate boxes on coarse-pointer devices
 - Test/screenshot expectations: unit-test history normalization, balance value handling, resolver validation, and shared Player routing; verify full-viewport desktop and mobile layouts plus the public Pages build
 
 ## Open questions
@@ -99,5 +99,4 @@
 - [ ] Confirm direct `/app/` → out-of-scope `/player/` navigation and PiP from an installed iPhone Home Screen web app / owner / mobile acceptance
 - [ ] Confirm direct Player PiP on a physical Android device / owner / mobile acceptance
 - [ ] Confirm HLS playback and fullscreen in current Windows Chrome and Edge / owner / desktop acceptance
-- [ ] Confirm L/R balance does not interrupt PiP audio on a physical Android device / owner / mobile acceptance
 - [ ] Confirm L/R balance in current Windows Chrome and Edge / owner / desktop acceptance

@@ -1,7 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { clampBalance, formatBalance, parseStoredBalance } from "./audio-balance";
+import {
+  DESKTOP_AUDIO_BALANCE_QUERY,
+  clampBalance,
+  formatBalance,
+  isChromiumUserAgent,
+  parseStoredBalance,
+  shouldOfferAudioBalance,
+} from "./audio-balance";
 
 describe("audio balance", () => {
+  it("uses a fine pointer and hover as the PC-only capability boundary", () => {
+    expect(DESKTOP_AUDIO_BALANCE_QUERY).toBe("(hover: hover) and (pointer: fine)");
+    expect(shouldOfferAudioBalance({ desktopPointer: false, chromium: true, audioContext: true, stereoPanner: true })).toBe(false);
+    expect(shouldOfferAudioBalance({ desktopPointer: true, chromium: false, audioContext: true, stereoPanner: true })).toBe(false);
+    expect(shouldOfferAudioBalance({ desktopPointer: true, chromium: true, audioContext: true, stereoPanner: true })).toBe(true);
+  });
+
+  it("recognizes desktop Chromium user agents without treating Safari as Chromium", () => {
+    expect(isChromiumUserAgent("Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36")).toBe(true);
+    expect(isChromiumUserAgent("Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0")).toBe(true);
+    expect(isChromiumUserAgent("Mozilla/5.0 Version/18.0 Safari/605.1.15")).toBe(false);
+  });
+
   it("clamps values to the stereo panner range", () => {
     expect(clampBalance(-2)).toBe(-1);
     expect(clampBalance(0.25)).toBe(0.25);

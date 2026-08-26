@@ -1,4 +1,21 @@
 export const AUDIO_BALANCE_KEY = "showroom-pip-audio-balance-v1";
+export const DESKTOP_AUDIO_BALANCE_QUERY = "(hover: hover) and (pointer: fine)";
+
+export function shouldOfferAudioBalance(capabilities: {
+  desktopPointer: boolean;
+  chromium: boolean;
+  audioContext: boolean;
+  stereoPanner: boolean;
+}): boolean {
+  return capabilities.desktopPointer &&
+    capabilities.chromium &&
+    capabilities.audioContext &&
+    capabilities.stereoPanner;
+}
+
+export function isChromiumUserAgent(userAgent: string): boolean {
+  return /\b(?:Chrome|Chromium|Edg)\/\d+/i.test(userAgent);
+}
 
 export function clampBalance(value: number): number {
   if (!Number.isFinite(value)) return 0;

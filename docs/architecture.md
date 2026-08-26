@@ -32,6 +32,8 @@ iPhoneのホーム画面Web AppとSafariのstorageが分離される環境では
 - Safari: native HLSと標準PiP APIまたはWebKit presentation modeを使う。
 - Chrome/Edge: HLS.jsと`requestPictureInPicture()`を使う。PCではFullscreen APIも使える。
 
-Chrome/EdgeのHLS.js経路では、利用者が`L/R`を操作した時だけ`AudioContext`を作ります。音声グラフは`MediaElementAudioSourceNode → StereoPannerNode → destination`です。値は端末内へ保存します。Safariのnative HLS経路ではWebKitの既知問題を避けるため、この音声グラフを作らずUIも表示しません。
+PC Chrome/Edgeでは、OSがnative HLSを提供する場合もHLS.js/MSEを優先します。利用者が`L/R`を操作した時だけ`AudioContext`を作り、`MediaElementAudioSourceNode → StereoPannerNode → destination`へ接続します。値は端末内へ保存します。スマートフォンではL/Rを提供しません。SafariはWebKitの既知問題を避けるためnative HLSを使い、UIも表示しません。
+
+スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ね、再生中かつ非操作時に自動で隠します。
 
 映像はSHOWROOMのCDNから端末へ直接流れます。GitHub PagesとVercel Resolverは映像を中継しません。

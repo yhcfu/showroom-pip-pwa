@@ -6,7 +6,7 @@
 - 初見でも「ルームを入力して開く」「履歴から開く」「必要なら設定を見る」は判断できる状態を保つ。
 - 履歴のルームをピン固定できるようにし、固定済みルームは最近開いた時刻に左右されず上部に残す。
 - プレイヤーに、共有用の正規URLをコピーする操作を追加する。HLS URLや一時的なストリーム情報は共有しない。
-- Chromium系のHLS.js再生経路だけ、Web Audio APIを使ったL/Rバランス調整を提供する。
+- PCのChromium系HLS.js再生経路だけ、Web Audio APIを使ったL/Rバランス調整を提供する。
 - Safari/iPhoneのネイティブHLSでは、既知のWebKit制約によりL/R操作を表示しない。
 - 新しいランタイム依存やサーバー処理は追加しない。
 
@@ -19,7 +19,7 @@
 5. 既存の `showroom-pip-history-v1` データはそのまま読み込める。
 6. ルームから開いたプレイヤーでは、`/player/?room=<roomKey>` 形式の共有URLをコピーできる。
 7. HLS URLを直接開いたプレイヤーでは、共有ボタンを表示しない。
-8. HLS.js再生経路ではL/Rスライダーが表示され、値を端末内に保存し、次回も復元する。
+8. PCのHLS.js再生経路ではL/Rスライダーが表示され、値を端末内に保存し、次回も復元する。
 9. ネイティブHLS再生経路ではL/R UIを表示せず、Web Audioグラフを作成しない。
 10. 読み込み成功後の常駐ステータスは消え、読み込み中とエラーだけが表示される。
 11. 単体テスト、TypeScript、Vite build、差分検査が通る。
@@ -69,8 +69,19 @@
 - [x] Conditional L/R balance implemented and unit-tested
 - [x] Documentation synchronized
 - [x] Local test, build, typo, workflow, audit, and diff checks passed
-- [ ] Physical Android/Windows audio verification
+- [x] Mobile L/R removed from scope; no mobile AudioContext is created
+- [x] Desktop Chrome/Edge prefer HLS.js even when native HLS is available
+- [ ] Physical Windows audio verification
 - [ ] Commit, push, and public GitHub Pages verification
+
+## Mobile Native-Control Overlap Follow-up
+
+- [x] Root cause identified: the custom absolute overlay shared the native `<video controls>` box
+- [x] Player markup split into a custom toolbar and a separate video frame
+- [x] Coarse-pointer layout reserves a compact toolbar row above the native video surface
+- [x] Static regression test added for the touch layout boundary
+- [ ] Physical iPhone and Android visual confirmation
+- [ ] Follow-up commit, deploy, and public readback
 
 ## Risks and Mitigations
 
@@ -88,5 +99,4 @@
 ## Proof Gaps Requiring Physical Devices
 
 - iPhone Safari/PWAでネイティブHLS、PiP、L/R非表示が期待どおりか。
-- Android ChromeでHLS.js、PiP、L/R調整を併用して音声が継続するか。
 - Windows Chrome/EdgeでL/R調整と全画面が安定するか。
