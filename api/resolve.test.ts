@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveShowroomRoom, selectHighestQualityHls } from "../api/resolve";
+import { resolveShowroomRoom, selectHighestQualityHls } from "./resolve";
 
 describe("resolveShowroomRoom", () => {
-  it("resolves the original-quality fixed HLS stream", async () => {
+  it("resolves the highest fixed-quality HLS stream", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(Response.json({ is_live: true, room_id: 42, room_name: "Room A" }))
       .mockResolvedValueOnce(Response.json({ streaming_url_list: [
@@ -22,10 +22,17 @@ describe("resolveShowroomRoom", () => {
     expect(String(fetcher.mock.calls[1][0])).toContain("streaming_url?abr_available=1&room_id=42");
   });
 
-  it("falls back to automatic HLS when no fixed rendition is available", () => {
+  it("uses the adaptive master only when fixed rendition is unavailable", () => {
     expect(selectHighestQualityHls([
       { type: "hls_all", label: "Automatic", url: "https://cdn.example.test/live/master.m3u8" },
     ])?.url).toBe("https://cdn.example.test/live/master.m3u8");
+  });
+
+  it("uses the highest numbered quality when a lower stream is mislabeled as original", () => {
+    expect(selectHighestQualityHls([
+      { type: "hls", label: "original quality", quality: 500, url: "https://cdn.example.test/live/labeled-original.m3u8" },
+      { type: "hls", label: "high quality", quality: 1000, url: "https://cdn.example.test/live/highest.m3u8" },
+    ])?.url).toBe("https://cdn.example.test/live/highest.m3u8");
   });
 
   it("stops before requesting a stream when the room is offline", async () => {

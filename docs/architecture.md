@@ -32,7 +32,7 @@ iPhoneのホーム画面Web AppとSafariのstorageが分離される環境では
 - Safari: native HLSと標準PiP APIまたはWebKit presentation modeを使う。
 - Chrome/Edge: HLS.jsと`requestPictureInPicture()`を使う。PCではFullscreen APIも使える。
 
-Resolverは`streaming_url_list`から`hls / original quality`を優先します。固定画質がない場合だけ`hls_all`へ戻します。このfallbackをHLS.jsで再生する端末では、manifest内の最大解像度・最大bitrateのlevelを固定します。
+Resolverは`streaming_url_list`から`quality`が最も高い固定画質`hls`を選びます。`quality`が同じ場合だけ、`original quality`ラベルをタイブレークに使います。固定画質がない場合は`hls_all`へ戻します。このfallbackをHLS.jsで再生する端末では、manifest内の最大解像度・最大bitrateのlevelを固定します。
 
 PC Chrome/Edgeでは、OSがnative HLSを提供する場合もHLS.js/MSEを優先します。利用者が`L/R`を操作した時だけ`AudioContext`を作り、`MediaElementAudioSourceNode → StereoPannerNode → destination`へ接続します。値は端末内へ保存します。スマートフォンではL/Rを提供しません。SafariはWebKitの既知問題を避けるためnative HLSを使い、UIも表示しません。
 
