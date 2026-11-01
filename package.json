@@ -13,7 +13,8 @@
     "check": "npm run test && npm run build"
   },
   "dependencies": {
-    "hls.js": "^1.6.13"
+    "hls.js": "^1.6.13",
+    "mediabunny": "^1.65.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",

@@ -10,7 +10,7 @@
     <title>SHOWROOM PiP Player</title>
   </head>
   <body class="player-page">
-    <main class="player-stage" aria-label="SHOWROOM動画プレイヤー">
+    <main class="player-stage" aria-label="動画プレイヤー">
       <div class="player-overlay">
         <a id="back-to-app" class="player-tool icon-tool player-back" href="../app/" aria-label="履歴へ戻る" title="履歴へ戻る">
           <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -30,7 +30,7 @@
             </svg>
             <span id="screenshot-label" class="tool-label">撮影</span>
           </button>
-          <button id="clip-button" class="player-tool icon-tool" type="button" aria-label="保存済み映像をMP4に切り出す" title="保存済み映像をMP4に切り出す" aria-expanded="false" aria-controls="clip-panel" hidden>
+          <button id="clip-button" class="player-tool icon-tool" type="button" aria-label="映像をMP4に切り出す" title="映像をMP4に切り出す" aria-expanded="false" aria-controls="clip-panel" hidden>
             <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <circle cx="6" cy="7" r="3"></circle>
               <circle cx="6" cy="17" r="3"></circle>
@@ -78,16 +78,11 @@
           <output id="balance-value" for="balance">C</output>
         </div>
         <section id="clip-panel" class="clip-panel" aria-label="MP4切り出し" hidden>
-          <video id="clip-preview" class="clip-preview" aria-label="切り出し位置のプレビュー" muted playsinline></video>
+          <video id="clip-preview" class="clip-preview" aria-label="切り出し位置のプレビュー" controls playsinline></video>
           <div class="clip-editor">
             <div class="clip-heading">
-              <strong>MP4切り出し</strong>
+              <strong>MP4切り出し（最大1分）</strong>
               <span id="clip-duration">0:00・実時間</span>
-            </div>
-            <div id="clip-timeline" class="clip-timeline">
-              <span class="clip-timeline-track" aria-hidden="true"><span id="clip-selection" class="clip-selection"></span></span>
-              <input id="clip-start" type="range" min="0" max="0" step="any" value="0" aria-label="切り出し開始位置" />
-              <input id="clip-end" type="range" min="0" max="0" step="any" value="0" aria-label="切り出し終了位置" />
             </div>
             <div class="clip-time-fields">
               <label id="clip-start-field" class="clip-time-field" for="clip-start-text">
@@ -107,10 +102,16 @@
             </div>
             <button id="clip-save" class="clip-save" type="button" disabled>MP4として保存</button>
           </div>
+          <div id="clip-timeline" class="clip-timeline">
+            <span class="clip-timeline-track" aria-hidden="true"><span id="clip-selection" class="clip-selection"></span></span>
+            <input id="clip-start" type="range" min="0" max="0" step="any" value="0" aria-label="切り出し開始位置" />
+            <input id="clip-end" type="range" min="0" max="0" step="any" value="0" aria-label="切り出し終了位置" />
+          </div>
         </section>
       </div>
       <div class="player-frame">
         <video id="video" controls playsinline preload="metadata" crossorigin="anonymous"></video>
+        <div id="local-ts-drop" class="local-ts-drop" aria-hidden="true" hidden>TSファイルを開く</div>
         <div id="empty-state" class="empty-state">
           <span class="pulse"></span>
           <p id="empty-message">配信を確認しています…</p>

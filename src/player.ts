@@ -10,6 +10,7 @@ import {
 } from "./audio-balance";
 import { parseRoomHistory, upsertRoomHistory } from "./history";
 import { highestQualityLevel, LIVE_HLS_CONFIG } from "./live-playback";
+import { convertLocalTsToMp4, isTransportStreamFile } from "./local-ts";
 import {
   buildBufferSessionKey,
   createPersistentFragmentLoader,
@@ -18,7 +19,14 @@ import {
   type ReplayPlan,
   type ResumeMarker,
 } from "./persistent-buffer";
-import { PLAYER_CONTROLS_IDLE_MS, shouldKeepPlayerControlsVisible } from "./player-controls";
+import {
+  MAX_CLIP_DURATION_SECONDS,
+  PLAYER_CONTROLS_IDLE_MS,
+  constrainClipRange,
+  shouldKeepPlayerControlsVisible,
+  shouldStopClipPreview,
+  volumeDuringClipPreview,
+} from "./player-controls";
 import { resolveRoom } from "./resolver";
 import { buildScreenshotFilename, copyPngToClipboard, shouldCaptureFromShortcut } from "./screenshot";
 import { buildPlayerUrl, buildRoomPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
@@ -73,6 +81,7 @@ const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
 const pipLabel = document.querySelector<HTMLElement>("#pip-label")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
 const fullscreenLabel = document.querySelector<HTMLElement>("#fullscreen-label")!;
+const localTsDrop = document.querySelector<HTMLElement>("#local-ts-drop")!;
 const emptyState = document.querySelector<HTMLElement>("#empty-state")!;
 const emptyMessage = document.querySelector<HTMLElement>("#empty-message")!;
 const status = document.querySelector<HTMLElement>("#status")!;
@@ -98,6 +107,9 @@ let clipPlan: ReplayPlan | null = null;
 let clipPreviewHls: import("hls.js").default | null = null;
 let clipPreviewManifestUrl: string | null = null;
 let replayManifestUrl: string | null = null;
+let localTsFileUrl: string | null = null;
+let localTsDuration: number | null = null;
+let localTsArtifact: Awaited<ReturnType<typeof convertLocalTsToMp4>> | null = null;
 let currentLiveFragment: import("hls.js").Fragment | null = null;
 let replaying = false;
 let switchingToLive = false;
@@ -106,6 +118,8 @@ let keyboardNavigation = false;
 let exportingClip = false;
 let refreshingClip = false;
 let clipPreviewReady = false;
+let loadingLocalTs = false;
+let mainVideoVolumeBeforeClipPreview: number | null = null;
 let activeClipBoundary: "start" | "end" = "start";
 
 const RESUME_MARKER_PREFIX = "showroom-pip-resume-v1:";
@@ -207,9 +221,10 @@ function enableScreenshotWhenReady() {
 }
 
 function enableClipWhenReady() {
-  const supported = bufferStore !== null && canExportMp4(video);
+  const localFileReady = localTsFileUrl !== null && localTsDuration !== null;
+  const supported = (bufferStore !== null || localFileReady) && canExportMp4(video);
   clipButton.hidden = !supported;
-  clipButton.disabled = !supported || currentResumeMarker() === null;
+  clipButton.disabled = !supported || (!localFileReady && currentResumeMarker() === null);
   if (!supported && !exportingClip) void setClipPanel(false);
 }
 
@@ -341,13 +356,37 @@ async function applyAudioBalance(value: number) {
   }
 }
 
+function restoreMainVideoVolume() {
+  if (mainVideoVolumeBeforeClipPreview === null) return;
+  const previousVolume = mainVideoVolumeBeforeClipPreview;
+  mainVideoVolumeBeforeClipPreview = null;
+  if (video.volume === volumeDuringClipPreview(previousVolume)) video.volume = previousVolume;
+}
+
+function syncClipPreviewAudio() {
+  const audible = !exportingClip && !clipPreview.paused && !clipPreview.muted && clipPreview.volume > 0;
+  if (!audible) {
+    restoreMainVideoVolume();
+    return;
+  }
+  if (mainVideoVolumeBeforeClipPreview !== null) return;
+  mainVideoVolumeBeforeClipPreview = video.volume;
+  video.volume = volumeDuringClipPreview(video.volume);
+}
+
+function pauseClipPreview() {
+  clipPreview.pause();
+  restoreMainVideoVolume();
+}
+
 function releaseClipPreview() {
   clipPreviewReady = false;
+  clipPreview.controls = false;
   clipPreviewHls?.destroy();
   clipPreviewHls = null;
   if (clipPreviewManifestUrl) URL.revokeObjectURL(clipPreviewManifestUrl);
   clipPreviewManifestUrl = null;
-  clipPreview.pause();
+  pauseClipPreview();
   clipPreview.removeAttribute("src");
   clipPreview.load();
 }
@@ -373,19 +412,19 @@ function setActiveClipBoundary(boundary: "start" | "end") {
 
 function seekClipPreview(boundary = activeClipBoundary) {
   if (!clipPreviewReady) return;
-  clipPreview.pause();
+  pauseClipPreview();
   clipPreview.currentTime = Number(boundary === "start" ? clipStart.value : clipEnd.value);
 }
 
 function updateClipRange(changed: "start" | "end" | null = null, preview = true) {
   const maximum = Number(clipStart.max);
-  let start = Math.max(0, Math.min(Number(clipStart.value), maximum));
-  let end = Math.max(0, Math.min(Number(clipEnd.value), maximum));
-  const minimumWidth = clipFrameDuration();
-  if (end <= start && maximum > 0) {
-    if (changed === "start") start = Math.max(0, end - minimumWidth);
-    else end = Math.min(maximum, start + minimumWidth);
-  }
+  const { start, end } = constrainClipRange({
+    start: Number(clipStart.value),
+    end: Number(clipEnd.value),
+    maximum,
+    minimumWidth: clipFrameDuration(),
+    changed,
+  });
   clipStart.value = String(start);
   clipEnd.value = String(end);
   clipStartText.removeAttribute("aria-invalid");
@@ -406,7 +445,9 @@ function updateClipRange(changed: "start" | "end" | null = null, preview = true)
   clipFrameBack.disabled = exportingClip || refreshingClip || !clipPreviewReady;
   clipFrameForward.disabled = exportingClip || refreshingClip || !clipPreviewReady;
   clipNow.disabled = exportingClip || refreshingClip;
-  clipSave.disabled = exportingClip || refreshingClip || !clipPlan || !clipPreviewReady || end <= start;
+  const sourceReady = (clipPlan !== null && bufferStore !== null) || (localTsFileUrl !== null && localTsDuration !== null);
+  clipSave.disabled = exportingClip || refreshingClip || !sourceReady || !clipPreviewReady || end <= start;
+  clipPreview.controls = clipPreviewReady && !exportingClip && !refreshingClip;
   if (changed) {
     setActiveClipBoundary(changed);
     if (preview) seekClipPreview(changed);
@@ -424,13 +465,65 @@ async function refreshClipPlan(marker: ResumeMarker): Promise<number> {
   return Math.min(maximum, markerTime(plan, marker) ?? maximum);
 }
 
+async function loadNativeVideo(target: HTMLVideoElement, sourceUrl: string, autoplay = false): Promise<number> {
+  const ready = new Promise<number>((resolve, reject) => {
+    let settled = false;
+    let timer = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      target.removeEventListener("canplay", mediaReady);
+      target.removeEventListener("error", mediaError);
+    };
+    const finish = (value: number | Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (value instanceof Error) reject(value);
+      else resolve(value);
+    };
+    const mediaReady = () => {
+      const duration = target.duration;
+      if (!Number.isFinite(duration) || duration <= 0) {
+        finish(new Error("TSファイルの長さを取得できませんでした。"));
+        return;
+      }
+      finish(duration);
+    };
+    const mediaError = () => finish(new Error("TSファイルを読み込めませんでした。"));
+    target.addEventListener("canplay", mediaReady, { once: true });
+    target.addEventListener("error", mediaError, { once: true });
+    timer = window.setTimeout(
+      () => finish(new Error("TSファイルの読み込みがタイムアウトしました。")),
+      30_000,
+    );
+  });
+  target.src = sourceUrl;
+  target.load();
+  if (autoplay) void target.play().catch(() => undefined);
+  return ready;
+}
+
 async function loadClipPreview(position: number) {
+  const localFileUrl = localTsFileUrl;
+  const localDuration = localTsDuration;
+  const localSource = localFileUrl !== null && localDuration !== null;
+  if (localSource) {
+    releaseClipPreview();
+    updateClipRange();
+    await loadNativeVideo(clipPreview, localFileUrl);
+    clipPreviewReady = true;
+    clipPreview.currentTime = position;
+    clipPreview.pause();
+    updateClipRange();
+    return;
+  }
   if (!clipPlan || !bufferStore) throw new Error("切り出しプレビューを準備できませんでした。");
-  releaseClipPreview();
-  updateClipRange();
+  const playlist = clipPlan.playlist;
   const { default: Hls } = await import("hls.js/light");
   const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
-  clipPreviewManifestUrl = URL.createObjectURL(new Blob([clipPlan.playlist], { type: "application/vnd.apple.mpegurl" }));
+  releaseClipPreview();
+  updateClipRange();
+  clipPreviewManifestUrl = URL.createObjectURL(new Blob([playlist], { type: "application/vnd.apple.mpegurl" }));
   const instance = new Hls({
     ...LIVE_HLS_CONFIG,
     fLoader: FragmentLoader,
@@ -474,8 +567,9 @@ async function setClipPanel(open: boolean) {
     return;
   }
 
-  const marker = currentResumeMarker();
-  if (!marker || refreshingClip) return;
+  const localDuration = localTsFileUrl !== null ? localTsDuration : null;
+  const marker = localDuration !== null ? null : currentResumeMarker();
+  if ((localDuration === null && !marker) || refreshingClip) return;
   setBalancePanel(false);
   clipPanel.hidden = false;
   clipPanel.setAttribute("aria-busy", "true");
@@ -485,16 +579,26 @@ async function setClipPanel(open: boolean) {
   setActiveClipBoundary("start");
   revealControls(false);
   try {
-    const position = await refreshClipPlan(marker);
-    const end = position > 0 ? position : Number(clipEnd.max);
-    clipStart.value = String(Math.max(0, end - 30));
-    clipEnd.value = String(end);
-    updateClipRange(null, false);
-    await loadClipPreview(Number(clipStart.value));
+    if (localDuration !== null) {
+      clipPlan = null;
+      clipStart.max = String(localDuration);
+      clipEnd.max = String(localDuration);
+      clipStart.value = "0";
+      clipEnd.value = String(Math.min(localDuration, 30));
+      updateClipRange(null, false);
+      await loadClipPreview(0);
+    } else {
+      const position = await refreshClipPlan(marker!);
+      const end = position > 0 ? position : Number(clipEnd.max);
+      clipStart.value = String(Math.max(0, end - 30));
+      clipEnd.value = String(end);
+      updateClipRange(null, false);
+      await loadClipPreview(Number(clipStart.value));
+    }
     setStatus("");
   } catch (error) {
     releaseClipPreview();
-    setStatus(error instanceof Error ? error.message : "保存済み映像を確認できませんでした。", true);
+    setStatus(error instanceof Error ? error.message : "切り出す映像を確認できませんでした。", true);
   } finally {
     refreshingClip = false;
     clipPanel.removeAttribute("aria-busy");
@@ -503,8 +607,24 @@ async function setClipPanel(open: boolean) {
 }
 
 async function setClipBoundaryToCurrent() {
+  if (refreshingClip) return;
+  if (localTsDuration !== null && localTsFileUrl) {
+    const position = Math.max(0, Math.min(localTsDuration, video.currentTime));
+    if (activeClipBoundary === "start") {
+      clipStart.value = String(position);
+      if (position >= Number(clipEnd.value)) {
+        clipStart.value = String(Math.max(0, position - clipFrameDuration()));
+        clipEnd.value = String(position);
+      }
+    } else {
+      clipEnd.value = String(position);
+      if (position <= Number(clipStart.value)) clipStart.value = String(Math.max(0, position - clipFrameDuration()));
+    }
+    updateClipRange(activeClipBoundary);
+    return;
+  }
   const marker = currentResumeMarker();
-  if (!marker || refreshingClip) return;
+  if (!marker) return;
   refreshingClip = true;
   updateClipRange(null, false);
   try {
@@ -587,11 +707,14 @@ function downloadClip(blob: Blob) {
 }
 
 async function exportClip() {
-  if (!clipPlan || !bufferStore || !clipPreviewReady || exportingClip || refreshingClip) return;
+  const sourceReady = (clipPlan !== null && bufferStore !== null) || (localTsFileUrl !== null && localTsDuration !== null);
+  if (!sourceReady || !clipPreviewReady || exportingClip || refreshingClip) return;
   const start = readClipTimeInput("start");
   const end = readClipTimeInput("end");
   const startInvalid = start === null;
-  const endInvalid = end === null || (start !== null && end <= start);
+  const endInvalid = end === null || (start !== null && (
+    end <= start || end - start > MAX_CLIP_DURATION_SECONDS
+  ));
   if (startInvalid || endInvalid) {
     if (startInvalid) clipStartText.setAttribute("aria-invalid", "true");
     else clipStartText.removeAttribute("aria-invalid");
@@ -599,16 +722,21 @@ async function exportClip() {
     else clipEndText.removeAttribute("aria-invalid");
     clipSave.disabled = true;
     setActiveClipBoundary(startInvalid ? "start" : "end");
-    clipActiveLabel.textContent = end !== null && start !== null && end <= start
-      ? "終了位置は開始位置より後に設定"
-      : "時刻は m:ss.sss で入力";
+    clipActiveLabel.textContent = end !== null && start !== null && end - start > MAX_CLIP_DURATION_SECONDS
+      ? "切り出しは最大1分まで"
+      : end !== null && start !== null && end <= start
+        ? "終了位置は開始位置より後に設定"
+        : "時刻は m:ss.sss で入力";
     setStatus("切り出す時刻を確認してください。", true);
     return;
   }
   clipStart.value = String(start);
   clipEnd.value = String(end);
   updateClipRange(null, false);
+  pauseClipPreview();
+  const previewMuted = clipPreview.muted;
   exportingClip = true;
+  clipPreview.muted = true;
   clipPanel.setAttribute("aria-busy", "true");
   clipSave.textContent = "準備中…";
   updateClipRange();
@@ -626,6 +754,7 @@ async function exportClip() {
     setStatus(error instanceof Error ? error.message : "MP4を保存できませんでした。", true);
   } finally {
     exportingClip = false;
+    clipPreview.muted = previewMuted;
     clipPanel.removeAttribute("aria-busy");
     clipSave.textContent = "MP4として保存";
     updateClipRange();
@@ -677,7 +806,10 @@ video.addEventListener("timeupdate", () => {
 video.addEventListener("ended", () => {
   if (replaying) void startLivePlayback();
 });
-window.addEventListener("pagehide", () => writeResumeMarker(true));
+window.addEventListener("pagehide", (event) => {
+  writeResumeMarker(true);
+  if (!event.persisted) releaseLocalTsSource();
+});
 
 function revealFromPointer() {
   keyboardNavigation = false;
@@ -689,6 +821,32 @@ stage.addEventListener("pointermove", revealFromPointer, { passive: true });
 stage.addEventListener("pointerdown", revealFromPointer, { passive: true });
 stage.addEventListener("focusin", () => revealControls());
 stage.addEventListener("focusout", () => queueMicrotask(() => revealControls()));
+for (const eventName of ["dragenter", "dragover"] as const) {
+  stage.addEventListener(eventName, (event) => {
+    if (!event.dataTransfer || !Array.from(event.dataTransfer.types).includes("Files")) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    localTsDrop.hidden = false;
+  });
+}
+stage.addEventListener("dragleave", (event) => {
+  if (event.relatedTarget instanceof Node && stage.contains(event.relatedTarget)) return;
+  localTsDrop.hidden = true;
+});
+stage.addEventListener("drop", (event) => {
+  const files = Array.from(event.dataTransfer?.files ?? []);
+  if (files.length === 0) return;
+  event.preventDefault();
+  localTsDrop.hidden = true;
+  if (files.length !== 1) {
+    setStatus("TSファイルは1つずつドロップしてください。", true);
+    return;
+  }
+  void loadLocalTs(files[0]);
+});
+stage.addEventListener("dragend", () => {
+  localTsDrop.hidden = true;
+});
 window.addEventListener("focus", () => revealControls());
 finePointerQuery.addEventListener("change", () => revealControls());
 
@@ -708,6 +866,15 @@ function releaseReplayManifest() {
   if (!replayManifestUrl) return;
   URL.revokeObjectURL(replayManifestUrl);
   replayManifestUrl = null;
+}
+
+function releaseLocalTsSource() {
+  localTsDuration = null;
+  if (localTsFileUrl) URL.revokeObjectURL(localTsFileUrl);
+  localTsFileUrl = null;
+  const artifact = localTsArtifact;
+  localTsArtifact = null;
+  void artifact?.dispose();
 }
 
 async function playCurrentMedia() {
@@ -803,9 +970,11 @@ async function startPersistentPlayback(handoff: PlayerHandoff, Hls: typeof impor
 }
 
 async function loadStream(handoff: PlayerHandoff) {
+  releaseClipPreview();
   hls?.destroy();
   hls = null;
   releaseReplayManifest();
+  releaseLocalTsSource();
   currentHandoff = handoff;
   bufferStore = null;
   bufferSessionKey = null;
@@ -850,6 +1019,70 @@ async function loadStream(handoff: PlayerHandoff) {
   if (!hls) await playCurrentMedia();
 }
 
+async function loadLocalTs(file: File) {
+  if (loadingLocalTs || exportingClip || refreshingClip) {
+    setStatus("処理中のため、TSファイルをまだ開けません。", true);
+    return;
+  }
+  if (!isTransportStreamFile(file)) {
+    setStatus("拡張子が .ts のMPEG-TSファイルをドロップしてください。", true);
+    return;
+  }
+
+  loadingLocalTs = true;
+  releaseClipPreview();
+  hls?.destroy();
+  hls = null;
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+  releaseReplayManifest();
+  releaseLocalTsSource();
+  currentHandoff = null;
+  bufferStore = null;
+  bufferSessionKey = null;
+  replaying = false;
+  replayPlan = null;
+  currentLiveFragment = null;
+  clipPlan = null;
+  clipPanel.hidden = true;
+  clipButton.hidden = true;
+  clipButton.disabled = true;
+  clipButton.setAttribute("aria-expanded", "false");
+  emptyState.hidden = true;
+  pipButton.disabled = true;
+  screenshotButton.disabled = true;
+  shareUrl = null;
+  shareButton.hidden = true;
+  currentRoomKey = undefined;
+  balanceEnabled = false;
+  balanceButton.hidden = true;
+  setBalancePanel(false);
+  setStatus("TSファイルを読み込んでいます…");
+
+  try {
+    localTsArtifact = await convertLocalTsToMp4(file, (progress) => {
+      setStatus(`TSファイルを準備しています… ${Math.round(progress * 100)}%`);
+    });
+    localTsFileUrl = URL.createObjectURL(localTsArtifact.blob);
+    enableAudioBalance();
+    localTsDuration = await loadNativeVideo(video, localTsFileUrl, true);
+    currentRoomKey = file.name.replace(/\.ts$/i, "");
+    emptyState.hidden = true;
+    enablePipWhenReady();
+    enableScreenshotWhenReady();
+    enableClipWhenReady();
+    setStatus("");
+    history.replaceState(null, "", location.pathname);
+  } catch (error) {
+    releaseLocalTsSource();
+    emptyState.hidden = false;
+    setStatus(error instanceof Error ? error.message : "TSファイルを読み込めませんでした。", true);
+  } finally {
+    loadingLocalTs = false;
+  }
+}
+
 shareButton.addEventListener("click", async () => {
   if (!shareUrl) return;
   try {
@@ -877,6 +1110,24 @@ screenshotButton.addEventListener("click", () => {
 clipButton.addEventListener("click", () => {
   void setClipPanel(clipPanel.hidden);
 });
+
+clipPreview.addEventListener("play", () => {
+  if (exportingClip) return;
+  const start = Number(clipStart.value);
+  const end = Number(clipEnd.value);
+  if (clipPreview.currentTime < start || clipPreview.currentTime >= end) clipPreview.currentTime = start;
+});
+clipPreview.addEventListener("playing", syncClipPreviewAudio);
+clipPreview.addEventListener("volumechange", syncClipPreviewAudio);
+clipPreview.addEventListener("timeupdate", () => {
+  const end = Number(clipEnd.value);
+  if (exportingClip || clipPreview.paused || !shouldStopClipPreview(clipPreview.currentTime, end)) return;
+  pauseClipPreview();
+  clipPreview.currentTime = end;
+});
+for (const eventName of ["pause", "waiting", "ended", "error"] as const) {
+  clipPreview.addEventListener(eventName, restoreMainVideoVolume);
+}
 
 clipStart.addEventListener("input", () => updateClipRange("start"));
 clipEnd.addEventListener("input", () => updateClipRange("end"));

@@ -13,9 +13,12 @@ describe("player tools", () => {
     expect(html).toContain('id="screenshot-button"');
     expect(html).toContain('id="clip-button"');
     expect(html).toContain('id="clip-panel"');
+    expect(html).toContain('id="clip-preview" class="clip-preview" aria-label="切り出し位置のプレビュー" controls playsinline');
     expect(html).toContain('id="clip-start"');
     expect(html).toContain('id="clip-end"');
     expect(html).toContain('id="clip-save"');
+    expect(html).toContain("MP4切り出し（最大1分）");
+    expect(html.indexOf('id="clip-timeline"')).toBeGreaterThan(html.indexOf('id="clip-save"'));
     expect(html).not.toContain('id="live-button"');
     expect(html).toContain('aria-keyshortcuts="S"');
     expect(html).not.toContain('class="tool-shortcut"');
@@ -35,7 +38,7 @@ describe("player tools", () => {
     expect(html).toContain('aria-label="共有URLをコピー"');
     expect(html).toContain('aria-label="左右の音声バランス"');
     expect(html).toContain('aria-label="スクリーンショットを保存・コピー"');
-    expect(html).toContain('aria-label="保存済み映像をMP4に切り出す"');
+    expect(html).toContain('aria-label="映像をMP4に切り出す"');
     expect(html).toContain('aria-label="ピクチャーインピクチャー"');
     expect(html).toContain('aria-label="全画面"');
     expect(css).toContain(".player-tool[hidden] { display: none; }");
@@ -54,7 +57,20 @@ describe("player tools", () => {
     expect(player).toContain("panelOpen: !balancePanel.hidden || !clipPanel.hidden");
     expect(player).toContain('clipPanel.setAttribute("aria-busy", "true")');
     expect(css).toContain(".clip-time-fields");
+    expect(css).toContain("grid-column: 1 / -1");
     expect(css).toContain("font-variant-numeric: tabular-nums");
+    expect(player).toContain("clipPreview.controls = clipPreviewReady && !exportingClip && !refreshingClip");
+    expect(player).toContain('clipPreview.addEventListener("play"');
+    expect(player).toContain('clipPreview.addEventListener("playing", syncClipPreviewAudio)');
+    expect(player).toContain("volumeDuringClipPreview(video.volume)");
+  });
+
+  it("opens one local TS file by drop without adding another toolbar action", () => {
+    expect(html).toContain('id="local-ts-drop" class="local-ts-drop"');
+    expect(html).not.toContain('id="local-ts-button"');
+    expect(css).toContain(".local-ts-drop[hidden] { display: none; }");
+    expect(player).toContain('stage.addEventListener("drop"');
+    expect(player).toContain("void loadLocalTs(files[0])");
   });
 
   it("uses the rewind-preserving live HLS configuration", () => {
