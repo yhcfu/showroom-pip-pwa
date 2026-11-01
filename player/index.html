@@ -30,6 +30,14 @@
             </svg>
             <span id="screenshot-label" class="tool-label">撮影</span>
           </button>
+          <button id="clip-button" class="player-tool icon-tool" type="button" aria-label="保存済み映像をMP4に切り出す" title="保存済み映像をMP4に切り出す" aria-expanded="false" aria-controls="clip-panel" hidden>
+            <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="6" cy="7" r="3"></circle>
+              <circle cx="6" cy="17" r="3"></circle>
+              <path d="m8.6 8.5 11.4 7M8.6 15.5 20 8.5"></path>
+            </svg>
+            <span class="tool-label">切出</span>
+          </button>
           <button id="share-button" class="player-tool icon-tool" type="button" aria-label="共有URLをコピー" title="共有URLをコピー" hidden>
             <svg class="tool-icon default-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="8" y="8" width="11" height="11" rx="2"></rect>
@@ -69,6 +77,37 @@
           <span aria-hidden="true">R</span>
           <output id="balance-value" for="balance">C</output>
         </div>
+        <section id="clip-panel" class="clip-panel" aria-label="MP4切り出し" hidden>
+          <video id="clip-preview" class="clip-preview" aria-label="切り出し位置のプレビュー" muted playsinline></video>
+          <div class="clip-editor">
+            <div class="clip-heading">
+              <strong>MP4切り出し</strong>
+              <span id="clip-duration">0:00・実時間</span>
+            </div>
+            <div id="clip-timeline" class="clip-timeline">
+              <span class="clip-timeline-track" aria-hidden="true"><span id="clip-selection" class="clip-selection"></span></span>
+              <input id="clip-start" type="range" min="0" max="0" step="any" value="0" aria-label="切り出し開始位置" />
+              <input id="clip-end" type="range" min="0" max="0" step="any" value="0" aria-label="切り出し終了位置" />
+            </div>
+            <div class="clip-time-fields">
+              <label id="clip-start-field" class="clip-time-field" for="clip-start-text">
+                <span>開始</span>
+                <input id="clip-start-text" type="text" inputmode="decimal" value="0:00.000" spellcheck="false" />
+              </label>
+              <label id="clip-end-field" class="clip-time-field" for="clip-end-text">
+                <span>終了</span>
+                <input id="clip-end-text" type="text" inputmode="decimal" value="0:00.000" spellcheck="false" />
+              </label>
+            </div>
+            <div class="clip-adjustment">
+              <span id="clip-active-label">開始位置を調整</span>
+              <button id="clip-frame-back" class="clip-adjust" type="button" aria-label="開始位置を1フレーム戻す">−1f</button>
+              <button id="clip-frame-forward" class="clip-adjust" type="button" aria-label="開始位置を1フレーム進める">+1f</button>
+              <button id="clip-now" class="clip-adjust" type="button">現在位置</button>
+            </div>
+            <button id="clip-save" class="clip-save" type="button" disabled>MP4として保存</button>
+          </div>
+        </section>
       </div>
       <div class="player-frame">
         <video id="video" controls playsinline preload="metadata" crossorigin="anonymous"></video>
