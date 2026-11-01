@@ -45,12 +45,13 @@ describe("buffered MP4 export", () => {
   it("maps the current HLS marker into the replay timeline", () => {
     const marker: ResumeMarker = { level: 2, sequence: 11, offset: 2.5, savedAt: 1 };
     expect(markerTime(plan, marker)).toBe(6.5);
+    expect(markerTime({ ...plan, segments: [{ ...plan.segments[1], timelineStart: 0 }] }, marker)).toBe(2.5);
     expect(replayDuration(plan)).toBe(9);
   });
 
-  it("clamps the marker offset and falls back to the buffer end", () => {
+  it("clamps the marker offset and reports a missing segment", () => {
     expect(markerTime(plan, { level: 2, sequence: 11, offset: 20, savedAt: 1 })).toBe(9);
-    expect(markerTime(plan, { level: 1, sequence: 99, offset: 0, savedAt: 1 })).toBe(9);
+    expect(markerTime(plan, { level: 1, sequence: 99, offset: 0, savedAt: 1 })).toBeNull();
   });
 
   it("formats long and short timeline positions", () => {

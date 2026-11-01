@@ -24,12 +24,12 @@ export function replayDuration(plan: ReplayPlan): number {
   return last ? last.timelineStart + last.duration : 0;
 }
 
-export function markerTime(plan: ReplayPlan, marker: ResumeMarker): number {
+export function markerTime(plan: ReplayPlan, marker: ResumeMarker): number | null {
   const segment = plan.segments.find((entry) => entry.sequence === marker.sequence && entry.level === marker.level) ??
     plan.segments.find((entry) => entry.sequence === marker.sequence);
   return segment
     ? segment.timelineStart + Math.max(0, Math.min(marker.offset, segment.duration))
-    : replayDuration(plan);
+    : null;
 }
 
 export function formatClipTime(seconds: number): string {

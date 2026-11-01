@@ -387,6 +387,8 @@ function updateClipRange(changed: "start" | "end" | null = null, preview = true)
   }
   clipStart.value = String(start);
   clipEnd.value = String(end);
+  clipStartText.removeAttribute("aria-invalid");
+  clipEndText.removeAttribute("aria-invalid");
   clipStartText.value = formatClipTimeInput(start);
   clipEndText.value = formatClipTimeInput(end);
   clipStart.setAttribute("aria-valuetext", formatClipTimeInput(start));
@@ -418,7 +420,7 @@ async function refreshClipPlan(marker: ResumeMarker): Promise<number> {
   const maximum = replayDuration(plan);
   clipStart.max = String(maximum);
   clipEnd.max = String(maximum);
-  return Math.min(maximum, markerTime(plan, marker));
+  return Math.min(maximum, markerTime(plan, marker) ?? maximum);
 }
 
 async function loadClipPreview(position: number) {
@@ -502,7 +504,22 @@ async function setClipBoundaryToCurrent() {
   if (!marker) return;
   try {
     clipPanel.setAttribute("aria-busy", "true");
+    const preservedBoundary = clipPlan
+      ? findReplayMarker(clipPlan, Number(activeClipBoundary === "start" ? clipEnd.value : clipStart.value))
+      : null;
     const position = await refreshClipPlan(marker);
+    const preservedPosition = preservedBoundary && clipPlan ? markerTime(clipPlan, preservedBoundary) : null;
+    if (preservedBoundary && preservedPosition === null) {
+      const label = activeClipBoundary === "start" ? "終了" : "開始";
+      clipPlan = null;
+      releaseClipPreview();
+      updateClipRange();
+      throw new Error(`選択した${label}位置は保存範囲から削除されました。範囲を選び直してください。`);
+    }
+    if (preservedPosition !== null) {
+      const preservedRange = activeClipBoundary === "start" ? clipEnd : clipStart;
+      preservedRange.value = String(preservedPosition);
+    }
     if (activeClipBoundary === "start") {
       clipStart.value = String(position);
       if (position >= Number(clipEnd.value)) {
@@ -522,13 +539,20 @@ async function setClipBoundaryToCurrent() {
   }
 }
 
-function applyClipTimeInput(boundary: "start" | "end") {
+function readClipTimeInput(boundary: "start" | "end"): number | null {
   const input = boundary === "start" ? clipStartText : clipEndText;
   const range = boundary === "start" ? clipStart : clipEnd;
   const parsed = parseClipTime(input.value);
-  const valid = parsed !== null && parsed >= 0 && parsed <= Number(range.max);
-  input.setAttribute("aria-invalid", String(!valid));
-  if (!valid || parsed === null) {
+  return parsed !== null && parsed >= 0 && parsed <= Number(range.max) ? parsed : null;
+}
+
+function applyClipTimeInput(boundary: "start" | "end") {
+  const input = boundary === "start" ? clipStartText : clipEndText;
+  const range = boundary === "start" ? clipStart : clipEnd;
+  const parsed = readClipTimeInput(boundary);
+  if (parsed === null) {
+    input.setAttribute("aria-invalid", "true");
+    clipSave.disabled = true;
     setActiveClipBoundary(boundary);
     clipActiveLabel.textContent = "時刻は m:ss.sss で入力";
     return;
@@ -558,8 +582,26 @@ function downloadClip(blob: Blob) {
 
 async function exportClip() {
   if (!clipPlan || !bufferStore || !clipPreviewReady || exportingClip) return;
-  const start = Number(clipStart.value);
-  const end = Number(clipEnd.value);
+  const start = readClipTimeInput("start");
+  const end = readClipTimeInput("end");
+  const startInvalid = start === null;
+  const endInvalid = end === null || (start !== null && end <= start);
+  if (startInvalid || endInvalid) {
+    if (startInvalid) clipStartText.setAttribute("aria-invalid", "true");
+    else clipStartText.removeAttribute("aria-invalid");
+    if (endInvalid) clipEndText.setAttribute("aria-invalid", "true");
+    else clipEndText.removeAttribute("aria-invalid");
+    clipSave.disabled = true;
+    setActiveClipBoundary(startInvalid ? "start" : "end");
+    clipActiveLabel.textContent = end !== null && start !== null && end <= start
+      ? "終了位置は開始位置より後に設定"
+      : "時刻は m:ss.sss で入力";
+    setStatus("切り出す時刻を確認してください。", true);
+    return;
+  }
+  clipStart.value = String(start);
+  clipEnd.value = String(end);
+  updateClipRange(null, false);
   exportingClip = true;
   clipPanel.setAttribute("aria-busy", "true");
   clipSave.textContent = "準備中…";
