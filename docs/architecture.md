@@ -40,10 +40,12 @@ HLS.jsのback bufferには時間制限を設けません。media fragmentはInde
 
 リロード時は、保存位置を含む連続segmentから一時的なVOD playlistを組み立てます。再生は保存位置から始まり、native timelineで巻き戻しと追っかけ再生を扱います。保存区間の終端へ実際に到達した場合だけ、一時playlistを破棄して現在のlive HLSへ自動で接続します。終端付近にいるだけでは再生位置を動かしません。
 
+MP4切り出しでも、同じVOD playlistとIndexedDB内のsegmentを使います。選んだ区間を画面外の`video`で再生し、`captureStream()`から得た映像と音声を`MediaRecorder`でMP4へ再エンコードします。映像は外部へ送信しません。出力形式は実行時に`MediaRecorder.isTypeSupported("video/mp4")`で確認し、利用できないブラウザでは切り出し操作を表示しません。この方式は[Media Capture from DOM Elements](https://w3c.github.io/mediacapture-fromelement/)と[MediaStream Recording](https://w3c.github.io/mediacapture-record/)の公開APIだけを使います。ChromiumのMP4 container対応は[Chrome 126](https://developer.chrome.com/release-notes/126#mp4_container_support_for_mediarecorder)で追加されました。
+
 端末内bufferの保持期限は24時間、希望上限は1 GiBです。空き容量が少ない端末では、`StorageManager.estimate()`を使って上限を縮めます。期限切れまたは古いsegmentから削除します。
 
 映像payloadとmetadataは別object storeへ置きます。そのため、容量整理の際に全映像をメモリへ展開しません。暗号化fragment、部分fragment、連続性を確認できない区間は復元対象外です。Safariのnative HLSも対象外です。
 
-スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ねます。再生中にポインター・キーボード入力が0.9秒なければ隠し、入力時は即座に戻します。マウスクリックでボタンにフォーカスが残っても表示を固定しません。一時停止中、バッファリング中、キーボードでツールへフォーカスしている間、L/Rパネルの表示中、エラー表示中は隠しません。
+スマートフォンなどのcoarse pointer環境では、独自ツールバーと`<video controls>`を上下の別領域に配置します。PCでは独自ツールバーを映像上へ重ねます。再生中にポインター・キーボード入力が0.9秒なければ隠し、入力時は即座に戻します。マウスクリックでボタンにフォーカスが残っても表示を固定しません。一時停止中、バッファリング中、キーボードでツールへフォーカスしている間、L/RまたはMP4切り出しパネルの表示中、エラー表示中は隠しません。
 
 映像はSHOWROOMのCDNから端末へ直接流れます。GitHub PagesとVercel Resolverは映像を中継しません。

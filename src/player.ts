@@ -22,6 +22,16 @@ import { PLAYER_CONTROLS_IDLE_MS, shouldKeepPlayerControlsVisible } from "./play
 import { resolveRoom } from "./resolver";
 import { buildScreenshotFilename, copyPngToClipboard, shouldCaptureFromShortcut } from "./screenshot";
 import { buildPlayerUrl, buildRoomPlayerUrl, readPlayerHandoff, readRoomKeyFromPlayerUrl, type PlayerHandoff } from "./showroom";
+import {
+  buildClipFilename,
+  canExportMp4,
+  formatClipTime,
+  formatClipTimeInput,
+  markerTime,
+  parseClipTime,
+  recordMp4Range,
+  replayDuration,
+} from "./video-export";
 
 declare global {
   interface HTMLVideoElement {
@@ -43,6 +53,22 @@ const balancePanel = document.querySelector<HTMLElement>("#balance-panel")!;
 const balanceInput = document.querySelector<HTMLInputElement>("#balance")!;
 const balanceValue = document.querySelector<HTMLOutputElement>("#balance-value")!;
 const screenshotButton = document.querySelector<HTMLButtonElement>("#screenshot-button")!;
+const clipButton = document.querySelector<HTMLButtonElement>("#clip-button")!;
+const clipPanel = document.querySelector<HTMLElement>("#clip-panel")!;
+const clipPreview = document.querySelector<HTMLVideoElement>("#clip-preview")!;
+const clipTimeline = document.querySelector<HTMLElement>("#clip-timeline")!;
+const clipStart = document.querySelector<HTMLInputElement>("#clip-start")!;
+const clipEnd = document.querySelector<HTMLInputElement>("#clip-end")!;
+const clipStartText = document.querySelector<HTMLInputElement>("#clip-start-text")!;
+const clipEndText = document.querySelector<HTMLInputElement>("#clip-end-text")!;
+const clipStartField = document.querySelector<HTMLElement>("#clip-start-field")!;
+const clipEndField = document.querySelector<HTMLElement>("#clip-end-field")!;
+const clipActiveLabel = document.querySelector<HTMLElement>("#clip-active-label")!;
+const clipFrameBack = document.querySelector<HTMLButtonElement>("#clip-frame-back")!;
+const clipFrameForward = document.querySelector<HTMLButtonElement>("#clip-frame-forward")!;
+const clipNow = document.querySelector<HTMLButtonElement>("#clip-now")!;
+const clipDuration = document.querySelector<HTMLElement>("#clip-duration")!;
+const clipSave = document.querySelector<HTMLButtonElement>("#clip-save")!;
 const pipButton = document.querySelector<HTMLButtonElement>("#pip-button")!;
 const pipLabel = document.querySelector<HTMLElement>("#pip-label")!;
 const fullscreenButton = document.querySelector<HTMLButtonElement>("#fullscreen-button")!;
@@ -68,12 +94,18 @@ let controlsIdleTimer: number | undefined;
 let bufferStore: PersistentBufferStore | null = null;
 let bufferSessionKey: string | null = null;
 let replayPlan: ReplayPlan | null = null;
+let clipPlan: ReplayPlan | null = null;
+let clipPreviewHls: import("hls.js").default | null = null;
+let clipPreviewManifestUrl: string | null = null;
 let replayManifestUrl: string | null = null;
 let currentLiveFragment: import("hls.js").Fragment | null = null;
 let replaying = false;
 let switchingToLive = false;
 let lastResumeSaveAt = 0;
 let keyboardNavigation = false;
+let exportingClip = false;
+let clipPreviewReady = false;
+let activeClipBoundary: "start" | "end" = "start";
 
 const RESUME_MARKER_PREFIX = "showroom-pip-resume-v1:";
 
@@ -92,7 +124,7 @@ function keepControlsVisible(): boolean {
     playing: stage.classList.contains("playing"),
     buffering: stage.classList.contains("buffering"),
     keyboardFocusWithin: keyboardNavigation && overlay.matches(":focus-within"),
-    panelOpen: !balancePanel.hidden,
+    panelOpen: !balancePanel.hidden || !clipPanel.hidden,
     blockingStatus: !status.hidden && status.classList.contains("error"),
   });
 }
@@ -131,23 +163,29 @@ function readResumeMarker(sessionKey: string): ResumeMarker | null {
   }
 }
 
+function currentResumeMarker(savedAt = Date.now()): ResumeMarker | null {
+  if (replaying && replayPlan) {
+    const marker = findReplayMarker(replayPlan, video.currentTime);
+    marker.savedAt = savedAt;
+    return marker;
+  }
+  if (currentLiveFragment && typeof currentLiveFragment.sn === "number") {
+    return {
+      level: currentLiveFragment.level,
+      sequence: currentLiveFragment.sn,
+      offset: Math.max(0, Math.min(currentLiveFragment.duration, video.currentTime - currentLiveFragment.start)),
+      savedAt,
+    };
+  }
+  return null;
+}
+
 function writeResumeMarker(force = false) {
   if (!bufferSessionKey) return;
   const now = Date.now();
   if (!force && now - lastResumeSaveAt < 1000) return;
-  let marker: ResumeMarker | null = null;
-  if (replaying && replayPlan) {
-    marker = findReplayMarker(replayPlan, video.currentTime);
-  } else if (currentLiveFragment && typeof currentLiveFragment.sn === "number") {
-    marker = {
-      level: currentLiveFragment.level,
-      sequence: currentLiveFragment.sn,
-      offset: Math.max(0, Math.min(currentLiveFragment.duration, video.currentTime - currentLiveFragment.start)),
-      savedAt: now,
-    };
-  }
+  const marker = currentResumeMarker(now);
   if (!marker) return;
-  marker.savedAt = now;
   try {
     localStorage.setItem(`${RESUME_MARKER_PREFIX}${bufferSessionKey}`, JSON.stringify(marker));
     lastResumeSaveAt = now;
@@ -165,6 +203,13 @@ function enablePipWhenReady() {
 
 function enableScreenshotWhenReady() {
   screenshotButton.disabled = video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth === 0 || video.videoHeight === 0;
+}
+
+function enableClipWhenReady() {
+  const supported = bufferStore !== null && canExportMp4(video);
+  clipButton.hidden = !supported;
+  clipButton.disabled = !supported || currentResumeMarker() === null;
+  if (!supported && !exportingClip) void setClipPanel(false);
 }
 
 function showScreenshotSuccess(copied: boolean) {
@@ -295,9 +340,255 @@ async function applyAudioBalance(value: number) {
   }
 }
 
+function releaseClipPreview() {
+  clipPreviewReady = false;
+  clipPreviewHls?.destroy();
+  clipPreviewHls = null;
+  if (clipPreviewManifestUrl) URL.revokeObjectURL(clipPreviewManifestUrl);
+  clipPreviewManifestUrl = null;
+  clipPreview.pause();
+  clipPreview.removeAttribute("src");
+  clipPreview.load();
+}
+
+function clipFrameDuration(): number {
+  const level = currentLiveFragment?.level ?? hls?.currentLevel ?? 0;
+  const frameRate = hls?.levels[level]?.frameRate || 30;
+  return 1 / frameRate;
+}
+
+function setActiveClipBoundary(boundary: "start" | "end") {
+  activeClipBoundary = boundary;
+  const startActive = boundary === "start";
+  clipStartField.dataset.active = String(startActive);
+  clipEndField.dataset.active = String(!startActive);
+  clipActiveLabel.textContent = `${startActive ? "開始" : "終了"}位置を調整`;
+  clipFrameBack.setAttribute("aria-label", `${startActive ? "開始" : "終了"}位置を1フレーム戻す`);
+  clipFrameForward.setAttribute("aria-label", `${startActive ? "開始" : "終了"}位置を1フレーム進める`);
+  const frameRate = Math.round(1 / clipFrameDuration());
+  clipFrameBack.title = `${frameRate}fps換算で1フレーム戻す`;
+  clipFrameForward.title = `${frameRate}fps換算で1フレーム進める`;
+}
+
+function seekClipPreview(boundary = activeClipBoundary) {
+  if (!clipPreviewReady) return;
+  clipPreview.pause();
+  clipPreview.currentTime = Number(boundary === "start" ? clipStart.value : clipEnd.value);
+}
+
+function updateClipRange(changed: "start" | "end" | null = null, preview = true) {
+  const maximum = Number(clipStart.max);
+  let start = Math.max(0, Math.min(Number(clipStart.value), maximum));
+  let end = Math.max(0, Math.min(Number(clipEnd.value), maximum));
+  const minimumWidth = clipFrameDuration();
+  if (end <= start && maximum > 0) {
+    if (changed === "start") start = Math.max(0, end - minimumWidth);
+    else end = Math.min(maximum, start + minimumWidth);
+  }
+  clipStart.value = String(start);
+  clipEnd.value = String(end);
+  clipStartText.value = formatClipTimeInput(start);
+  clipEndText.value = formatClipTimeInput(end);
+  clipStart.setAttribute("aria-valuetext", formatClipTimeInput(start));
+  clipEnd.setAttribute("aria-valuetext", formatClipTimeInput(end));
+  const startPercent = maximum > 0 ? start / maximum * 100 : 0;
+  const endPercent = maximum > 0 ? end / maximum * 100 : 100;
+  clipTimeline.style.setProperty("--clip-start-percent", `${startPercent}%`);
+  clipTimeline.style.setProperty("--clip-end-percent", `${endPercent}%`);
+  clipDuration.textContent = `${formatClipTime(Math.max(0, end - start))}・実時間`;
+  clipStart.disabled = exportingClip;
+  clipEnd.disabled = exportingClip;
+  clipStartText.disabled = exportingClip;
+  clipEndText.disabled = exportingClip;
+  clipFrameBack.disabled = exportingClip || !clipPreviewReady;
+  clipFrameForward.disabled = exportingClip || !clipPreviewReady;
+  clipNow.disabled = exportingClip;
+  clipSave.disabled = exportingClip || !clipPlan || !clipPreviewReady || end <= start;
+  if (changed) {
+    setActiveClipBoundary(changed);
+    if (preview) seekClipPreview(changed);
+  }
+}
+
+async function refreshClipPlan(marker: ResumeMarker): Promise<number> {
+  if (!bufferStore) throw new Error("保存済み映像がまだありません。");
+  const plan = await bufferStore.replay(marker, location.origin);
+  if (!plan || plan.segments.length === 0) throw new Error("切り出せる映像がまだありません。");
+  clipPlan = plan;
+  const maximum = replayDuration(plan);
+  clipStart.max = String(maximum);
+  clipEnd.max = String(maximum);
+  return Math.min(maximum, markerTime(plan, marker));
+}
+
+async function loadClipPreview(position: number) {
+  if (!clipPlan || !bufferStore) throw new Error("切り出しプレビューを準備できませんでした。");
+  releaseClipPreview();
+  updateClipRange();
+  const { default: Hls } = await import("hls.js/light");
+  const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
+  clipPreviewManifestUrl = URL.createObjectURL(new Blob([clipPlan.playlist], { type: "application/vnd.apple.mpegurl" }));
+  const instance = new Hls({
+    ...LIVE_HLS_CONFIG,
+    fLoader: FragmentLoader,
+    startPosition: position,
+    lowLatencyMode: false,
+  });
+  clipPreviewHls = instance;
+  const ready = new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("プレビューの準備がタイムアウトしました。")), 30_000);
+    clipPreview.addEventListener("canplay", () => {
+      window.clearTimeout(timer);
+      resolve();
+    }, { once: true });
+    clipPreview.addEventListener("error", () => {
+      window.clearTimeout(timer);
+      reject(new Error("切り出しプレビューを読み込めませんでした。"));
+    }, { once: true });
+    instance.on(Hls.Events.ERROR, (_event, data) => {
+      if (!data.fatal) return;
+      window.clearTimeout(timer);
+      reject(new Error(`HLSプレビューエラー: ${data.details}`));
+    });
+  });
+  instance.loadSource(clipPreviewManifestUrl);
+  instance.attachMedia(clipPreview);
+  await ready;
+  clipPreviewReady = true;
+  clipPreview.currentTime = position;
+  clipPreview.pause();
+  updateClipRange();
+}
+
+async function setClipPanel(open: boolean) {
+  if (!open) {
+    if (exportingClip) return;
+    clipPanel.hidden = true;
+    clipButton.setAttribute("aria-expanded", "false");
+    clipPlan = null;
+    releaseClipPreview();
+    revealControls();
+    return;
+  }
+
+  const marker = currentResumeMarker();
+  if (!marker) return;
+  setBalancePanel(false);
+  clipPanel.hidden = false;
+  clipPanel.setAttribute("aria-busy", "true");
+  clipButton.setAttribute("aria-expanded", "true");
+  clipSave.disabled = true;
+  setActiveClipBoundary("start");
+  revealControls(false);
+  try {
+    const position = await refreshClipPlan(marker);
+    const end = position > 0 ? position : Number(clipEnd.max);
+    clipStart.value = String(Math.max(0, end - 30));
+    clipEnd.value = String(end);
+    updateClipRange(null, false);
+    await loadClipPreview(Number(clipStart.value));
+    setStatus("");
+  } catch (error) {
+    releaseClipPreview();
+    setStatus(error instanceof Error ? error.message : "保存済み映像を確認できませんでした。", true);
+  } finally {
+    clipPanel.removeAttribute("aria-busy");
+    updateClipRange();
+  }
+}
+
+async function setClipBoundaryToCurrent() {
+  const marker = currentResumeMarker();
+  if (!marker) return;
+  try {
+    clipPanel.setAttribute("aria-busy", "true");
+    const position = await refreshClipPlan(marker);
+    if (activeClipBoundary === "start") {
+      clipStart.value = String(position);
+      if (position >= Number(clipEnd.value)) {
+        clipStart.value = String(Math.max(0, position - clipFrameDuration()));
+        clipEnd.value = String(position);
+      }
+    } else {
+      clipEnd.value = String(position);
+      if (position <= Number(clipStart.value)) clipStart.value = String(Math.max(0, position - clipFrameDuration()));
+    }
+    updateClipRange(activeClipBoundary, false);
+    await loadClipPreview(position);
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "現在位置を取得できませんでした。", true);
+  } finally {
+    clipPanel.removeAttribute("aria-busy");
+  }
+}
+
+function applyClipTimeInput(boundary: "start" | "end") {
+  const input = boundary === "start" ? clipStartText : clipEndText;
+  const range = boundary === "start" ? clipStart : clipEnd;
+  const parsed = parseClipTime(input.value);
+  const valid = parsed !== null && parsed >= 0 && parsed <= Number(range.max);
+  input.setAttribute("aria-invalid", String(!valid));
+  if (!valid || parsed === null) {
+    setActiveClipBoundary(boundary);
+    clipActiveLabel.textContent = "時刻は m:ss.sss で入力";
+    return;
+  }
+  input.removeAttribute("aria-invalid");
+  range.value = String(parsed);
+  updateClipRange(boundary);
+}
+
+function adjustClipFrame(direction: -1 | 1) {
+  const range = activeClipBoundary === "start" ? clipStart : clipEnd;
+  range.value = String(Number(range.value) + direction * clipFrameDuration());
+  updateClipRange(activeClipBoundary);
+}
+
+function downloadClip(blob: Blob) {
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = buildClipFilename(currentRoomKey);
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+}
+
+async function exportClip() {
+  if (!clipPlan || !bufferStore || !clipPreviewReady || exportingClip) return;
+  const start = Number(clipStart.value);
+  const end = Number(clipEnd.value);
+  exportingClip = true;
+  clipPanel.setAttribute("aria-busy", "true");
+  clipSave.textContent = "準備中…";
+  updateClipRange();
+  setStatus("MP4を準備しています…");
+
+  try {
+    const duration = end - start;
+    clipSave.textContent = "作成中…";
+    const blob = await recordMp4Range(clipPreview, start, end, (position) => {
+      setStatus(`MP4を作成中… ${formatClipTime(position - start)} / ${formatClipTime(duration)}`);
+    });
+    downloadClip(blob);
+    setStatus(`MP4を保存しました（${formatClipTime(duration)}）。`);
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "MP4を保存できませんでした。", true);
+  } finally {
+    exportingClip = false;
+    clipPanel.removeAttribute("aria-busy");
+    clipSave.textContent = "MP4として保存";
+    updateClipRange();
+    seekClipPreview();
+  }
+}
+
 video.addEventListener("loadedmetadata", () => {
   enablePipWhenReady();
   enableScreenshotWhenReady();
+  enableClipWhenReady();
 });
 video.addEventListener("loadeddata", enableScreenshotWhenReady);
 video.addEventListener("emptied", () => {
@@ -305,11 +596,13 @@ video.addEventListener("emptied", () => {
   revealControls(false);
   pipButton.disabled = true;
   screenshotButton.disabled = true;
+  clipButton.disabled = true;
 });
 video.addEventListener("error", () => {
   stage.classList.remove("playing", "buffering");
   pipButton.disabled = true;
   screenshotButton.disabled = true;
+  clipButton.disabled = true;
   setStatus("動画を読み込めませんでした。配信が終了していないか確認してください。", true);
 });
 video.addEventListener("playing", () => {
@@ -328,6 +621,7 @@ video.addEventListener("waiting", () => {
 video.addEventListener("canplay", () => {
   stage.classList.remove("buffering");
   revealControls(!video.paused);
+  enableClipWhenReady();
 });
 video.addEventListener("timeupdate", () => {
   writeResumeMarker();
@@ -395,6 +689,7 @@ async function startLivePlayback() {
   replaying = false;
   replayPlan = null;
   currentLiveFragment = null;
+  enableClipWhenReady();
   releaseReplayManifest();
   hls?.destroy();
   hls = null;
@@ -408,6 +703,7 @@ async function startLivePlayback() {
     instance.on(Hls.Events.FRAG_CHANGED, (_event, data) => {
       currentLiveFragment = data.frag;
       writeResumeMarker();
+      enableClipWhenReady();
     });
     instance.on(Hls.Events.ERROR, (_event, data) => {
       if (data.fatal) {
@@ -438,6 +734,7 @@ async function startPersistentPlayback(handoff: PlayerHandoff, Hls: typeof impor
 
   replaying = true;
   replayPlan = restored;
+  enableClipWhenReady();
   setStatus("前回位置から再開しています");
   replayManifestUrl = URL.createObjectURL(new Blob([restored.playlist], { type: "application/vnd.apple.mpegurl" }));
   const FragmentLoader = createPersistentFragmentLoader(Hls.DefaultConfig.loader, bufferStore);
@@ -466,6 +763,12 @@ async function loadStream(handoff: PlayerHandoff) {
   bufferSessionKey = null;
   replaying = false;
   replayPlan = null;
+  currentLiveFragment = null;
+  clipPlan = null;
+  clipPanel.hidden = true;
+  clipButton.hidden = true;
+  clipButton.disabled = true;
+  clipButton.setAttribute("aria-expanded", "false");
   emptyState.hidden = true;
   pipButton.disabled = true;
   screenshotButton.disabled = true;
@@ -523,8 +826,24 @@ screenshotButton.addEventListener("click", () => {
   void captureScreenshot();
 });
 
+clipButton.addEventListener("click", () => {
+  void setClipPanel(clipPanel.hidden);
+});
+
+clipStart.addEventListener("input", () => updateClipRange("start"));
+clipEnd.addEventListener("input", () => updateClipRange("end"));
+clipStartText.addEventListener("focus", () => setActiveClipBoundary("start"));
+clipEndText.addEventListener("focus", () => setActiveClipBoundary("end"));
+clipStartText.addEventListener("change", () => applyClipTimeInput("start"));
+clipEndText.addEventListener("change", () => applyClipTimeInput("end"));
+clipFrameBack.addEventListener("click", () => adjustClipFrame(-1));
+clipFrameForward.addEventListener("click", () => adjustClipFrame(1));
+clipNow.addEventListener("click", () => void setClipBoundaryToCurrent());
+clipSave.addEventListener("click", () => void exportClip());
+
 balanceButton.addEventListener("click", () => {
   const open = balancePanel.hidden;
+  if (open) void setClipPanel(false);
   setBalancePanel(open);
   if (open) void applyAudioBalance(Number(balanceInput.value));
 });
@@ -537,7 +856,10 @@ document.addEventListener("keydown", (event) => {
   keyboardNavigation = true;
   stage.classList.add("keyboard-navigation");
   revealControls();
-  if (event.key === "Escape") setBalancePanel(false);
+  if (event.key === "Escape") {
+    setBalancePanel(false);
+    void setClipPanel(false);
+  }
   const target = event.target;
   const editing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
   if (shouldCaptureFromShortcut({
@@ -558,6 +880,9 @@ document.addEventListener("pointerdown", (event) => {
   const target = event.target;
   if (target instanceof Node && !balancePanel.contains(target) && !balanceButton.contains(target)) {
     setBalancePanel(false);
+  }
+  if (target instanceof Node && !clipPanel.contains(target) && !clipButton.contains(target)) {
+    void setClipPanel(false);
   }
 });
 

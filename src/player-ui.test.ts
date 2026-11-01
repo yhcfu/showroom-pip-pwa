@@ -6,11 +6,16 @@ const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
 const player = readFileSync(new URL("./player.ts", import.meta.url), "utf8");
 
 describe("player tools", () => {
-  it("provides compact share, balance, screenshot, PiP, and fullscreen controls", () => {
+  it("provides compact share, balance, screenshot, clip, PiP, and fullscreen controls", () => {
     expect(html).toContain('id="share-button"');
     expect(html).toContain('id="balance-button"');
     expect(html).toContain('id="balance-panel"');
     expect(html).toContain('id="screenshot-button"');
+    expect(html).toContain('id="clip-button"');
+    expect(html).toContain('id="clip-panel"');
+    expect(html).toContain('id="clip-start"');
+    expect(html).toContain('id="clip-end"');
+    expect(html).toContain('id="clip-save"');
     expect(html).not.toContain('id="live-button"');
     expect(html).toContain('aria-keyshortcuts="S"');
     expect(html).not.toContain('class="tool-shortcut"');
@@ -30,6 +35,7 @@ describe("player tools", () => {
     expect(html).toContain('aria-label="共有URLをコピー"');
     expect(html).toContain('aria-label="左右の音声バランス"');
     expect(html).toContain('aria-label="スクリーンショットを保存・コピー"');
+    expect(html).toContain('aria-label="保存済み映像をMP4に切り出す"');
     expect(html).toContain('aria-label="ピクチャーインピクチャー"');
     expect(html).toContain('aria-label="全画面"');
     expect(css).toContain(".player-tool[hidden] { display: none; }");
@@ -42,6 +48,13 @@ describe("player tools", () => {
     expect(player).toContain('video.addEventListener("enterpictureinpicture"');
     expect(player).toContain('setFullscreenState(document.fullscreenElement !== null)');
     expect(css).toContain('.player-tool[aria-pressed="true"]');
+  });
+
+  it("keeps the clip panel visible while selecting or exporting a range", () => {
+    expect(player).toContain("panelOpen: !balancePanel.hidden || !clipPanel.hidden");
+    expect(player).toContain('clipPanel.setAttribute("aria-busy", "true")');
+    expect(css).toContain(".clip-time-fields");
+    expect(css).toContain("font-variant-numeric: tabular-nums");
   });
 
   it("uses the rewind-preserving live HLS configuration", () => {
