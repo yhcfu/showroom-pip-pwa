@@ -54,10 +54,13 @@ export function selectHighestQualityHls(streams: StreamingUrl[]): StreamingUrl |
   const fixedHls = streams.filter((stream) => stream.type === "hls" && typeof stream.url === "string");
   if (fixedHls.length > 0) {
     return fixedHls.reduce((best, stream) => {
+      const quality = typeof stream.quality === "number" && Number.isFinite(stream.quality) ? stream.quality : 0;
+      const bestQuality = typeof best.quality === "number" && Number.isFinite(best.quality) ? best.quality : 0;
+      if (quality !== bestQuality) return quality > bestQuality ? stream : best;
       const original = stream.label?.toLowerCase().includes("original") ? 1 : 0;
       const bestOriginal = best.label?.toLowerCase().includes("original") ? 1 : 0;
       if (original !== bestOriginal) return original > bestOriginal ? stream : best;
-      return (stream.quality ?? 0) > (best.quality ?? 0) ? stream : best;
+      return best;
     });
   }
   return streams.find((stream) => stream.type === "hls_all" && typeof stream.url === "string");

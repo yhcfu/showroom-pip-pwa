@@ -20,7 +20,7 @@ PC Chrome/EdgeとAndroidでは、取得済み映像を端末内へ最長24時間
 
 `L/R`はPC版Chrome/Edge限定です。音声の左右バランスを調整できます。
 
-再生には、SHOWROOMが返すoriginal qualityのHLSを優先します。見つからない配信では自動画質HLSを使い、その中の最高レベルを選びます。
+再生には、SHOWROOMが返す固定画質HLSのうち、`quality`が最も高いものを使います。固定画質がない配信では自動画質HLSを使い、その中の最高レベルを選びます。
 
 初回設定はありません。Shortcut、ブックマークレット、ブラウザ拡張も不要です。PWAは`/app/`、動画プレイヤーは`/player/`へ分け、Playerをインストール対象のscopeから外しています。
 
