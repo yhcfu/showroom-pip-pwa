@@ -15,6 +15,8 @@ export function selectMp4MimeType(isSupported: (type: string) => boolean): strin
 
 export function canExportMp4(video: CapturableVideo): boolean {
   return typeof video.captureStream === "function" &&
+    typeof video.requestVideoFrameCallback === "function" &&
+    typeof video.cancelVideoFrameCallback === "function" &&
     typeof MediaRecorder !== "undefined" &&
     selectMp4MimeType((type) => MediaRecorder.isTypeSupported(type)) !== null;
 }
@@ -146,10 +148,15 @@ export async function recordMp4Range(
     let settled = false;
     let failed = false;
     let lastProgress = start - 1;
+    let pausePending = false;
+    let pausedForVisibility = false;
 
     const cleanup = () => {
       if (frameRequest) video.cancelVideoFrameCallback(frameRequest);
       window.clearTimeout(stallTimer);
+      document.removeEventListener("visibilitychange", visibilityChanged);
+      recorder.removeEventListener("pause", recorderPaused);
+      recorder.removeEventListener("resume", recorderResumed);
       video.removeEventListener("error", fail);
       video.removeEventListener("ended", endedEarly);
       video.pause();
@@ -177,8 +184,56 @@ export async function recordMp4Range(
       window.clearTimeout(stallTimer);
       stallTimer = window.setTimeout(fail, 30_000);
     };
+    const startPlayback = () => {
+      if (settled || document.hidden) return;
+      if (frameRequest) video.cancelVideoFrameCallback(frameRequest);
+      armStallTimer();
+      frameRequest = video.requestVideoFrameCallback(checkFrame);
+      void video.play().catch(fail);
+    };
+    const pauseForVisibility = () => {
+      if (settled) return;
+      pausedForVisibility = true;
+      if (frameRequest) video.cancelVideoFrameCallback(frameRequest);
+      frameRequest = 0;
+      window.clearTimeout(stallTimer);
+      video.pause();
+      if (recorder.state === "recording" && !pausePending) {
+        pausePending = true;
+        recorder.pause();
+      }
+    };
+    const resumeForVisibility = () => {
+      if (settled || document.hidden || !pausedForVisibility || pausePending) return;
+      if (recorder.state === "paused") {
+        recorder.resume();
+      } else if (recorder.state === "recording") {
+        pausedForVisibility = false;
+        startPlayback();
+      }
+    };
+    const recorderPaused = () => {
+      pausePending = false;
+      resumeForVisibility();
+    };
+    const recorderResumed = () => {
+      if (document.hidden) {
+        pauseForVisibility();
+        return;
+      }
+      pausedForVisibility = false;
+      startPlayback();
+    };
+    const visibilityChanged = () => {
+      if (document.hidden) pauseForVisibility();
+      else resumeForVisibility();
+    };
     const checkFrame: VideoFrameRequestCallback = (_now, metadata) => {
       if (settled) return;
+      if (document.hidden) {
+        pauseForVisibility();
+        return;
+      }
       armStallTimer();
       if (metadata.mediaTime - lastProgress >= 0.25) {
         lastProgress = metadata.mediaTime;
@@ -195,6 +250,8 @@ export async function recordMp4Range(
       if (event.data.size > 0) chunks.push(event.data);
     });
     recorder.addEventListener("error", fail, { once: true });
+    recorder.addEventListener("pause", recorderPaused);
+    recorder.addEventListener("resume", recorderResumed);
     recorder.addEventListener("stop", () => {
       cleanup();
       if (failed) return;
@@ -207,12 +264,12 @@ export async function recordMp4Range(
     }, { once: true });
     video.addEventListener("error", fail, { once: true });
     video.addEventListener("ended", endedEarly);
+    document.addEventListener("visibilitychange", visibilityChanged);
 
     try {
       recorder.start(1000);
-      armStallTimer();
-      frameRequest = video.requestVideoFrameCallback(checkFrame);
-      void video.play().catch(fail);
+      if (document.hidden) pauseForVisibility();
+      else startPlayback();
     } catch {
       fail();
     }

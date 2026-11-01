@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReplayPlan, ResumeMarker } from "./persistent-buffer";
 import {
   buildClipFilename,
@@ -7,9 +7,12 @@ import {
   markerTime,
   parseClipTime,
   parseClipTimeWithinRange,
+  recordMp4Range,
   replayDuration,
   selectMp4MimeType,
 } from "./video-export";
+
+afterEach(() => vi.unstubAllGlobals());
 
 const plan: ReplayPlan = {
   playlist: "#EXTM3U",
@@ -86,5 +89,78 @@ describe("buffered MP4 export", () => {
     expect(selectMp4MimeType((type) => type.includes("mp4a"))).toContain("mp4a.40.2");
     expect(selectMp4MimeType((type) => type === "video/mp4")).toBe("video/mp4");
     expect(selectMp4MimeType(() => false)).toBeNull();
+  });
+
+  it("pauses recording while the page is hidden and resumes at the selected endpoint", async () => {
+    class FakeRecorder extends EventTarget {
+      static instance: FakeRecorder;
+      static isTypeSupported = () => true;
+      mimeType = "video/mp4";
+      state: RecordingState = "inactive";
+
+      constructor() {
+        super();
+        FakeRecorder.instance = this;
+      }
+
+      start() {
+        this.state = "recording";
+      }
+
+      pause() {
+        this.state = "paused";
+        this.dispatchEvent(new Event("pause"));
+      }
+
+      resume() {
+        this.state = "recording";
+        this.dispatchEvent(new Event("resume"));
+      }
+
+      stop() {
+        this.state = "inactive";
+        const data = new Event("dataavailable");
+        Object.defineProperty(data, "data", { value: new Blob(["mp4"]) });
+        this.dispatchEvent(data);
+        this.dispatchEvent(new Event("stop"));
+      }
+    }
+
+    class FakeVideo extends EventTarget {
+      currentTime = 0;
+      pause = vi.fn();
+      play = vi.fn(() => Promise.resolve());
+      frameCallback: VideoFrameRequestCallback | null = null;
+      requestVideoFrameCallback = vi.fn((callback: VideoFrameRequestCallback) => {
+        this.frameCallback = callback;
+        return 1;
+      });
+      cancelVideoFrameCallback = vi.fn();
+      captureStream = () => ({
+        getVideoTracks: () => [{}],
+        getTracks: () => [{ stop: vi.fn() }],
+      } as unknown as MediaStream);
+    }
+
+    const visibility = new EventTarget() as EventTarget & { hidden: boolean };
+    visibility.hidden = false;
+    vi.stubGlobal("document", visibility);
+    vi.stubGlobal("window", { setTimeout, clearTimeout });
+    vi.stubGlobal("MediaRecorder", FakeRecorder);
+    const video = new FakeVideo();
+
+    const recording = recordMp4Range(video as unknown as HTMLVideoElement, 0, 2);
+    await Promise.resolve();
+    expect(FakeRecorder.instance.state).toBe("recording");
+    visibility.hidden = true;
+    visibility.dispatchEvent(new Event("visibilitychange"));
+    expect(FakeRecorder.instance.state).toBe("paused");
+    visibility.hidden = false;
+    visibility.dispatchEvent(new Event("visibilitychange"));
+    expect(FakeRecorder.instance.state).toBe("recording");
+    expect(video.play).toHaveBeenCalledTimes(2);
+
+    video.frameCallback?.(0, { mediaTime: 2 } as VideoFrameCallbackMetadata);
+    await expect(recording).resolves.toMatchObject({ type: "video/mp4", size: 3 });
   });
 });
