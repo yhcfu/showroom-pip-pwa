@@ -6,6 +6,7 @@ import {
   formatClipTimeInput,
   markerTime,
   parseClipTime,
+  parseClipTimeWithinRange,
   replayDuration,
   selectMp4MimeType,
 } from "./video-export";
@@ -68,6 +69,12 @@ describe("buffered MP4 export", () => {
     expect(parseClipTime("1:60")).toBeNull();
     expect(parseClipTime("1.5:30")).toBeNull();
     expect(parseClipTime("time")).toBeNull();
+  });
+
+  it("accepts a displayed millisecond at the unrounded buffer end", () => {
+    const maximum = 12.011999999999999;
+    expect(parseClipTimeWithinRange(formatClipTimeInput(maximum), maximum)).toBe(maximum);
+    expect(parseClipTimeWithinRange("0:12.013", maximum)).toBeNull();
   });
 
   it("builds a filesystem-safe MP4 name", () => {

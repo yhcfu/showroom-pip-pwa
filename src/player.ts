@@ -28,7 +28,7 @@ import {
   formatClipTime,
   formatClipTimeInput,
   markerTime,
-  parseClipTime,
+  parseClipTimeWithinRange,
   recordMp4Range,
   replayDuration,
 } from "./video-export";
@@ -104,6 +104,7 @@ let switchingToLive = false;
 let lastResumeSaveAt = 0;
 let keyboardNavigation = false;
 let exportingClip = false;
+let refreshingClip = false;
 let clipPreviewReady = false;
 let activeClipBoundary: "start" | "end" = "start";
 
@@ -398,14 +399,14 @@ function updateClipRange(changed: "start" | "end" | null = null, preview = true)
   clipTimeline.style.setProperty("--clip-start-percent", `${startPercent}%`);
   clipTimeline.style.setProperty("--clip-end-percent", `${endPercent}%`);
   clipDuration.textContent = `${formatClipTime(Math.max(0, end - start))}・実時間`;
-  clipStart.disabled = exportingClip;
-  clipEnd.disabled = exportingClip;
-  clipStartText.disabled = exportingClip;
-  clipEndText.disabled = exportingClip;
-  clipFrameBack.disabled = exportingClip || !clipPreviewReady;
-  clipFrameForward.disabled = exportingClip || !clipPreviewReady;
-  clipNow.disabled = exportingClip;
-  clipSave.disabled = exportingClip || !clipPlan || !clipPreviewReady || end <= start;
+  clipStart.disabled = exportingClip || refreshingClip;
+  clipEnd.disabled = exportingClip || refreshingClip;
+  clipStartText.disabled = exportingClip || refreshingClip;
+  clipEndText.disabled = exportingClip || refreshingClip;
+  clipFrameBack.disabled = exportingClip || refreshingClip || !clipPreviewReady;
+  clipFrameForward.disabled = exportingClip || refreshingClip || !clipPreviewReady;
+  clipNow.disabled = exportingClip || refreshingClip;
+  clipSave.disabled = exportingClip || refreshingClip || !clipPlan || !clipPreviewReady || end <= start;
   if (changed) {
     setActiveClipBoundary(changed);
     if (preview) seekClipPreview(changed);
@@ -464,7 +465,7 @@ async function loadClipPreview(position: number) {
 
 async function setClipPanel(open: boolean) {
   if (!open) {
-    if (exportingClip) return;
+    if (exportingClip || refreshingClip) return;
     clipPanel.hidden = true;
     clipButton.setAttribute("aria-expanded", "false");
     clipPlan = null;
@@ -474,12 +475,13 @@ async function setClipPanel(open: boolean) {
   }
 
   const marker = currentResumeMarker();
-  if (!marker) return;
+  if (!marker || refreshingClip) return;
   setBalancePanel(false);
   clipPanel.hidden = false;
   clipPanel.setAttribute("aria-busy", "true");
   clipButton.setAttribute("aria-expanded", "true");
-  clipSave.disabled = true;
+  refreshingClip = true;
+  updateClipRange(null, false);
   setActiveClipBoundary("start");
   revealControls(false);
   try {
@@ -494,6 +496,7 @@ async function setClipPanel(open: boolean) {
     releaseClipPreview();
     setStatus(error instanceof Error ? error.message : "保存済み映像を確認できませんでした。", true);
   } finally {
+    refreshingClip = false;
     clipPanel.removeAttribute("aria-busy");
     updateClipRange();
   }
@@ -501,7 +504,9 @@ async function setClipPanel(open: boolean) {
 
 async function setClipBoundaryToCurrent() {
   const marker = currentResumeMarker();
-  if (!marker) return;
+  if (!marker || refreshingClip) return;
+  refreshingClip = true;
+  updateClipRange(null, false);
   try {
     clipPanel.setAttribute("aria-busy", "true");
     const preservedBoundary = clipPlan
@@ -535,15 +540,16 @@ async function setClipBoundaryToCurrent() {
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "現在位置を取得できませんでした。", true);
   } finally {
+    refreshingClip = false;
     clipPanel.removeAttribute("aria-busy");
+    updateClipRange();
   }
 }
 
 function readClipTimeInput(boundary: "start" | "end"): number | null {
   const input = boundary === "start" ? clipStartText : clipEndText;
   const range = boundary === "start" ? clipStart : clipEnd;
-  const parsed = parseClipTime(input.value);
-  return parsed !== null && parsed >= 0 && parsed <= Number(range.max) ? parsed : null;
+  return parseClipTimeWithinRange(input.value, Number(range.max));
 }
 
 function applyClipTimeInput(boundary: "start" | "end") {
@@ -581,7 +587,7 @@ function downloadClip(blob: Blob) {
 }
 
 async function exportClip() {
-  if (!clipPlan || !bufferStore || !clipPreviewReady || exportingClip) return;
+  if (!clipPlan || !bufferStore || !clipPreviewReady || exportingClip || refreshingClip) return;
   const start = readClipTimeInput("start");
   const end = readClipTimeInput("end");
   const startInvalid = start === null;

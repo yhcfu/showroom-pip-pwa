@@ -69,6 +69,13 @@ export function parseClipTime(value: string): number | null {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
+export function parseClipTimeWithinRange(value: string, maximum: number): number | null {
+  if (!Number.isFinite(maximum) || maximum < 0) return null;
+  const parsed = parseClipTime(value);
+  const roundedMaximum = Math.round(maximum * 1000) / 1000;
+  return parsed !== null && parsed <= roundedMaximum ? Math.min(parsed, maximum) : null;
+}
+
 export function buildClipFilename(roomKey: string | undefined, exportedAt = new Date()): string {
   const room = roomKey?.replace(/[^A-Za-z0-9_-]/g, "-") || "video";
   const timestamp = exportedAt.toISOString().replace(/[:.]/g, "-");
